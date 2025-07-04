@@ -1,105 +1,131 @@
-import React, { useState, useEffect } from 'react';
-import { Box, TextField, Button, MenuItem, Grid, Typography, Alert } from '@mui/material';
-import dayjs from 'dayjs';
+import React, { useState } from 'react';
 import axios from 'axios';
-import ReservaGrade from './ReservaGrade';
 
-export default function ReservaForm() {
-  const [veiculos, setVeiculos] = useState([]);
-  const [form, setForm] = useState({
+export default function ReservaForm({ onReservaCreated }) {
+  const [formData, setFormData] = useState({
+    veiculo: '',
+    data_retirada: '',
+    data_devolucao_prevista: '',
     responsavel: '',
     email: '',
-    departamento: '',
-    veiculo: '',
-    dataRetirada: '',
-    dataDevolucaoPrevista: ''
+    departamento: ''
   });
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [grade, setGrade] = useState([]);
+  const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    axios.get('/api/veiculos').then(res => setVeiculos(res.data));
-  }, []);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-  useEffect(() => {
-    setGrade([]);
-    if (form.veiculo) {
-      axios.get('/api/calendario', { params: { veiculo: form.veiculo } })
-        .then(res => setGrade(res.data))
-        .catch(() => setGrade([]));
-    }
-  }, [form.veiculo]);
-
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  function validate() {
-    if (!form.responsavel || !form.email || !form.departamento || !form.veiculo || !form.dataRetirada || !form.dataDevolucaoPrevista)
-      return 'Preencha todos os campos obrigatórios.';
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email))
-      return 'Email inválido.';
-    if (dayjs(form.dataRetirada).isAfter(dayjs(form.dataDevolucaoPrevista)))
-      return 'Data/hora de retirada deve ser anterior à devolução prevista.';
-    return '';
-  }
-
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
-    const val = validate();
-    if (val) return setError(val);
-    setLoading(true);
+    setSuccess(false);
     try {
-      await axios.post('/api/reservas', form);
-      setSuccess('Reserva realizada com sucesso!');
-      setForm({ ...form, dataRetirada: '', dataDevolucaoPrevista: '' });
-      setGrade([]);
+      // Converter datas para ISO antes de enviar para o backend
+      const data_retirada_iso = new Date(formData.data_retirada).toISOString();
+      const data_devolucao_prevista_iso = new Date(formData.data_devolucao_prevista).toISOString();
+      const response = await axios.post('/api/reservas/', {
+        ...formData,
+        data_retirada: data_retirada_iso,
+        data_devolucao_prevista: data_devolucao_prevista_iso
+      }); 
+      setSuccess(true);
+      setFormData({
+        veiculo: '',
+        data_retirada: '',
+        data_devolucao_prevista: '',
+        responsavel: '',
+        email: '',
+        departamento: ''
+      });
+      if (onReservaCreated) onReservaCreated(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao reservar.');
-    } finally {
-      setLoading(false);
+      setError('Erro ao criar reserva. Por favor, tente novamente.');
     }
-  }
+  };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          <TextField name="responsavel" label="Responsável" fullWidth required value={form.responsavel} onChange={handleChange} />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField name="email" label="Email" fullWidth required value={form.email} onChange={handleChange} type="email" />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField name="departamento" label="Departamento" fullWidth required value={form.departamento} onChange={handleChange} />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField name="veiculo" label="Veículo" select fullWidth required value={form.veiculo} onChange={handleChange}>
-            {veiculos.map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-          </TextField>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField name="dataRetirada" label="Data/Hora de Retirada" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={form.dataRetirada} onChange={handleChange} />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField name="dataDevolucaoPrevista" label="Data/Hora Devolução Prevista" type="datetime-local" fullWidth required InputLabelProps={{ shrink: true }} value={form.dataDevolucaoPrevista} onChange={handleChange} />
-        </Grid>
-      </Grid>
-      <Box sx={{ mt: 3 }}>
-        <Typography variant="subtitle1" gutterBottom>
-          Reservas futuras para o veículo selecionado:
-        </Typography>
-        <ReservaGrade reservas={grade} />
-      </Box>
-      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
-      <Button type="submit" variant="contained" color="primary" sx={{ mt: 3 }} disabled={loading}>
-        Reservar
-      </Button>
-    </Box>
+    <form className="p-4 border rounded bg-white shadow-sm mb-4" onSubmit={handleSubmit}>
+      <div className="row g-3">
+        <div className="col-md-6">
+          <label className="form-label">Veículo *</label>
+          <select
+            className="form-select"
+            name="veiculo"
+            required
+            value={formData.veiculo}
+            onChange={handleChange}
+          >
+            <option value="">Selecione...</option>
+            <option value="T-Cross">T-Cross</option>
+            <option value="Polo VW">Polo VW</option>
+          </select>
+        </div>
+        <div className="col-md-6">
+          <label className="form-label">Responsável *</label>
+          <input
+            type="text"
+            className="form-control"
+            name="responsavel"
+            required
+            value={formData.responsavel}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label">Email *</label>
+          <input
+            type="email"
+            className="form-control"
+            name="email"
+            required
+            value={formData.email}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label">Departamento *</label>
+          <input
+            type="text"
+            className="form-control"
+            name="departamento"
+            required
+            value={formData.departamento}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label">Data/Hora Retirada *</label>
+          <input
+            type="datetime-local"
+            className="form-control"
+            name="data_retirada"
+            required
+            value={formData.data_retirada}
+            onChange={handleChange}
+            pattern="\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label">Data/Hora Devolução *</label>
+          <input
+            type="datetime-local"
+            className="form-control"
+            name="data_devolucao_prevista"
+            required
+            value={formData.data_devolucao_prevista}
+            onChange={handleChange}
+            pattern="\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"
+          />
+        </div>
+      </div>
+      {error && <div className="alert alert-danger mt-3">{error}</div>}
+      {success && <div className="alert alert-success mt-3">Reserva criada com sucesso!</div>}
+      <button type="submit" className="btn btn-primary mt-3">
+        Criar Reserva
+      </button>
+    </form>
   );
 }

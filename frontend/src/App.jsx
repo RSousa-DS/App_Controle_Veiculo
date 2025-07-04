@@ -1,72 +1,48 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Container, Box, Button, IconButton, Drawer, List, ListItem, ListItemText } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import ReservaPage from './pages/ReservaPage';
 import DevolucaoPage from './pages/DevolucaoPage';
 import HistoricoPage from './pages/HistoricoPage';
 
-const menuItems = [
-  { label: 'Reserva de Veículo', path: '/' },
-  { label: 'Devolução de Veículo', path: '/devolucao' },
-  { label: 'Histórico de Reservas', path: '/historico' },
-];
-
+const theme = createTheme();
 export default function App() {
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const location = useLocation();
-
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: '#f4f6fa', minHeight: '100vh' }}>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            sx={{ mr: 2, display: { sm: 'none' } }}
-            onClick={() => setDrawerOpen(true)}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Sistema de Controle de Veículos
-          </Typography>
-          <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-            {menuItems.map(item => (
-              <Button
-                key={item.path}
-                color={location.pathname === item.path ? 'secondary' : 'inherit'}
-                component={Link}
-                to={item.path}
-                sx={{ ml: 2 }}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </Box>
-        </Toolbar>
-      </AppBar>
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        sx={{ display: { sm: 'none' } }}
-      >
-        <List>
-          {menuItems.map(item => (
-            <ListItem button component={Link} to={item.path} key={item.path} onClick={() => setDrawerOpen(false)}>
-              <ListItemText primary={item.label} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
-      <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+    <Router>
+      <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div className="container-fluid">
+          <Link className="navbar-brand" to="/">Controle de Veículos</Link>
+          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span className="navbar-toggler-icon"></span>
+          </button>
+          <div className="collapse navbar-collapse" id="navbarNav">
+            <ul className="navbar-nav ms-auto">
+              <li className="nav-item">
+                <Link className="nav-link" to="/">Reserva</Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link" to="/devolucao">Devolução</Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link" to="/historico">Histórico</Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+      <div className="container py-4">
         <Routes>
           <Route path="/" element={<ReservaPage />} />
           <Route path="/devolucao" element={<DevolucaoPage />} />
           <Route path="/historico" element={<HistoricoPage />} />
         </Routes>
-      </Container>
-    </Box>
+      </div>
+    </Router>
   );
 }
