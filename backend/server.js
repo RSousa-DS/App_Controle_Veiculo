@@ -4,12 +4,36 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const swaggerJsDoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+
+// Configuração do Swagger
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'API de Controle de Veículos',
+      version: '1.0.0',
+      description: 'API para gerenciamento de reservas de veículos',
+    },
+    servers: [
+      {
+        url: 'http://localhost:3001',
+        description: 'Servidor de desenvolvimento',
+      },
+    ],
+  },
+  apis: ['./server.js'],
+};
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
 
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configuração do upload
@@ -55,10 +79,61 @@ function checkOverlap(veiculo, retirada, devolucao, reservaId, cb) {
 }
 
 // Rotas
+/**
+ * @swagger
+ * /api/veiculos:
+ *   get:
+ *     summary: Retorna a lista de veículos disponíveis
+ *     tags: [Veículos]
+ *     responses:
+ *       200:
+ *         description: Lista de veículos
+ *         content:
+ *           application/json:
+ *             example: ["T-Cross", "Polo VW"]
+ */
 app.get('/api/veiculos', (req, res) => {
   res.json(['T-Cross', 'Polo VW']);
 });
 
+/**
+ * @swagger
+ * /api/reservas:
+ *   get:
+ *     summary: Lista todas as reservas com filtros opcionais
+ *     tags: [Reservas]
+ *     parameters:
+ *       - in: query
+ *         name: veiculo
+ *         schema:
+ *           type: string
+ *         description: Filtro por veículo
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filtro por status
+ *       - in: query
+ *         name: responsavel
+ *         schema:
+ *           type: string
+ *         description: Filtro por responsável
+ *       - in: query
+ *         name: data
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filtro por data (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Lista de reservas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Reserva'
+ */
 app.get('/api/reservas', (req, res) => {
   let filtro = [];
   let params = [];
@@ -76,6 +151,34 @@ app.get('/api/reservas', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/reservas:
+ *   post:
+ *     summary: Cria uma nova reserva
+ *     tags: [Reservas]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NovaReserva'
+ *     responses:
+ *       200:
+ *         description: Reserva criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   description: ID da reserva criada
+ *       400:
+ *         description: Campos obrigatórios não preenchidos
+ *       409:
+ *         description: Horário já reservado para este veículo
+ */
 app.post('/api/reservas', (req, res) => {
   const {veiculo, dataRetirada, dataDevolucaoPrevista, responsavel, email, departamento} = req.body;
   if (!veiculo || !dataRetirada || !dataDevolucaoPrevista || !responsavel || !email || !departamento)
@@ -92,6 +195,45 @@ app.post('/api/reservas', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/devolucao:
+ *   post:
+ *     summary: Registra a devolução de um veículo
+ *     tags: [Devoluções]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reservaId:
+ *                 type: integer
+ *               kmDevolvido:
+ *                 type: integer
+ *               localEstacionado:
+ *                 type: string
+ *               responsavelDevolucao:
+ *                 type: string
+ *               observacoes:
+ *                 type: string
+ *               imagemPainel:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Devolução registrada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *       400:
+ *         description: Campos obrigatórios não preenchidos
+ */
 app.post('/api/devolucao', upload.single('imagemPainel'), (req, res) => {
   const {reservaId, kmDevolvido, localEstacionado} = req.body;
   if (!reservaId || !kmDevolvido || !localEstacionado || !req.file)
@@ -105,6 +247,40 @@ app.post('/api/devolucao', upload.single('imagemPainel'), (req, res) => {
   );
 });
 
+/**
+ * @swagger
+ * /api/reservas/{id}:
+ *   delete:
+ *     summary: Remove uma reserva
+ *     tags: [Reservas]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID da reserva a ser removida
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - senha
+ *             properties:
+ *               senha:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Reserva removida com sucesso
+ *       400:
+ *         description: Só é possível excluir reservas com status Reservado
+ *       403:
+ *         description: Senha incorreta
+ *       404:
+ *         description: Reserva não encontrada
+ */
 app.delete('/api/reservas/:id', (req, res) => {
   const {senha} = req.body;
   const id = req.params.id;
@@ -138,6 +314,71 @@ app.get('/api/calendario', (req, res) => {
     res.json(rows);
   });
 });
+
+// Rota raiz para documentação
+app.get('/', (req, res) => {
+  res.redirect('/api-docs');
+});
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Reserva:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         veiculo:
+ *           type: string
+ *         dataRetirada:
+ *           type: string
+ *           format: date-time
+ *         dataDevolucaoPrevista:
+ *           type: string
+ *           format: date-time
+ *         dataDevolucaoReal:
+ *           type: string
+ *           format: date-time
+ *         responsavel:
+ *           type: string
+ *         email:
+ *           type: string
+ *         departamento:
+ *           type: string
+ *         kmDevolvido:
+ *           type: integer
+ *         localEstacionado:
+ *           type: string
+ *         imagemPainel:
+ *           type: string
+ *         statusDevolucao:
+ *           type: string
+ *     NovaReserva:
+ *       type: object
+ *       required:
+ *         - veiculo
+ *         - dataRetirada
+ *         - dataDevolucaoPrevista
+ *         - responsavel
+ *         - email
+ *         - departamento
+ *       properties:
+ *         veiculo:
+ *           type: string
+ *         dataRetirada:
+ *           type: string
+ *           format: date-time
+ *         dataDevolucaoPrevista:
+ *           type: string
+ *           format: date-time
+ *         responsavel:
+ *           type: string
+ *         email:
+ *           type: string
+ *         departamento:
+ *           type: string
+ */
 
 app.listen(PORT, () => {
   console.log('Backend rodando em http://localhost:' + PORT);

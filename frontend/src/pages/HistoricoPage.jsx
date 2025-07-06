@@ -12,8 +12,10 @@ export default function HistoricoPage() {
     veiculo: '',
     responsavel: '',
     status: '',
-    data: '',
+    dataInicio: '',
+    dataFim: '',
   });
+  const [veiculos, setVeiculos] = useState([]);
 
   const fetchReservas = async () => {
     try {
@@ -26,6 +28,8 @@ export default function HistoricoPage() {
 
   useEffect(() => {
     fetchReservas();
+    // Buscar veículos para o dropdown
+    axios.get('/api/veiculos/').then(res => setVeiculos(res.data)).catch(() => setVeiculos([]));
   }, []);
 
   const handleFiltroChange = (e) => {
@@ -33,12 +37,20 @@ export default function HistoricoPage() {
     setFiltro(prev => ({ ...prev, [name]: value }));
   };
 
-  const reservasFiltradas = reservas.filter(r =>
-    (!filtro.veiculo || r.veiculo.toLowerCase().includes(filtro.veiculo.toLowerCase())) &&
-    (!filtro.responsavel || r.responsavel.toLowerCase().includes(filtro.responsavel.toLowerCase())) &&
-    (!filtro.status || r.status.toLowerCase().includes(filtro.status.toLowerCase())) &&
-    (!filtro.data || r.data_retirada.startsWith(filtro.data))
-  );
+  const reservasFiltradas = reservas.filter(r => {
+    const veiculoOk = !filtro.veiculo || r.veiculo === filtro.veiculo;
+    const responsavelOk = !filtro.responsavel || r.responsavel.toLowerCase().includes(filtro.responsavel.toLowerCase());
+    const statusAtual = r.data_devolucao ? 'Finalizada' : 'Pendente';
+    const statusOk = !filtro.status || statusAtual === filtro.status;
+    let dataOk = true;
+    if (filtro.dataInicio) {
+      dataOk = new Date(r.dataRetirada) >= new Date(filtro.dataInicio.split('/').reverse().join('-'));
+    }
+    if (dataOk && filtro.dataFim) {
+      dataOk = new Date(r.dataRetirada) <= new Date(filtro.dataFim.split('/').reverse().join('-'));
+    }
+    return veiculoOk && responsavelOk && statusOk && dataOk;
+  });
 
   const handleDeleteClick = (reserva) => {
     setReservaParaExcluir(reserva);
@@ -68,16 +80,28 @@ export default function HistoricoPage() {
       <h2 className="mb-4">Histórico de Reservas</h2>
       <div className="row g-2 mb-3">
         <div className="col-md-3">
-          <input className="form-control" placeholder="Veículo" name="veiculo" value={filtro.veiculo} onChange={handleFiltroChange} />
+          <select className="form-control" name="veiculo" value={filtro.veiculo} onChange={handleFiltroChange}>
+            <option value="">Todos os Veículos</option>
+            {veiculos.map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
         </div>
         <div className="col-md-3">
           <input className="form-control" placeholder="Responsável" name="responsavel" value={filtro.responsavel} onChange={handleFiltroChange} />
         </div>
         <div className="col-md-3">
-          <input className="form-control" placeholder="Status" name="status" value={filtro.status} onChange={handleFiltroChange} />
+          <select className="form-control" name="status" value={filtro.status} onChange={handleFiltroChange}>
+            <option value="">Todos</option>
+            <option value="Pendente">Pendente</option>
+            <option value="Finalizada">Finalizada</option>
+          </select>
         </div>
         <div className="col-md-3">
-          <input className="form-control" placeholder="Data (YYYY-MM-DD)" name="data" value={filtro.data} onChange={handleFiltroChange} />
+          <input type="text" className="form-control" placeholder="Data Início" name="dataInicio" value={filtro.dataInicio} onChange={handleFiltroChange} onFocus={e => e.target.type='date'} onBlur={e => e.target.type='text'} pattern="\d{2}/\d{2}/\d{4}" />
+        </div>
+        <div className="col-md-3">
+          <input type="text" className="form-control" placeholder="Data Fim" name="dataFim" value={filtro.dataFim} onChange={handleFiltroChange} onFocus={e => e.target.type='date'} onBlur={e => e.target.type='text'} pattern="\d{2}/\d{2}/\d{4}" />
         </div>
       </div>
       <div className="table-responsive mb-4">
@@ -88,6 +112,7 @@ export default function HistoricoPage() {
               <th>Data de Retirada</th>
               <th>Data de Devolução Prevista</th>
               <th>Status</th>
+              <th>🛣️ KM Percorrida</th>
               <th>Responsável</th>
               <th>Departamento</th>
               <th>Ações</th>
@@ -97,11 +122,14 @@ export default function HistoricoPage() {
             {reservasFiltradas.length > 0 ? reservasFiltradas.map((reserva) => (
               <tr key={reserva.id}>
                 <td>{reserva.veiculo}</td>
-                <td>{new Date(reserva.data_retirada).toLocaleString('pt-BR')}</td>
-                <td>{new Date(reserva.data_devolucao_prevista).toLocaleString('pt-BR')}</td>
-                <td>{reserva.status}</td>
+                <td>{new Date(reserva.dataRetirada).toLocaleString('pt-BR')}</td>
+                <td>{new Date(reserva.dataDevolucaoPrevista).toLocaleString('pt-BR')}</td>
+                <td style={{background: reserva.data_devolucao ? '#d4edda' : '#f8d7da'}}>
+  {reserva.data_devolucao ? 'Finalizada' : 'Pendente'}
+</td>
                 <td>{reserva.responsavel}</td>
                 <td>{reserva.departamento}</td>
+                <td>{(reserva.quilometragem_final && reserva.quilometragem_inicial) ? (reserva.quilometragem_final - reserva.quilometragem_inicial) : '-'}</td>
                 <td>
                   <button className="btn btn-danger btn-sm" onClick={() => handleDeleteClick(reserva)}>
                     Excluir

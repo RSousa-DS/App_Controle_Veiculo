@@ -20,8 +20,8 @@ export default function ReservaGrade({ reservas = [] }) {
               reservas.map((reserva) => (
                 <tr key={reserva.id}>
                   <td>{reserva.veiculo}</td>
-                  <td>{new Date(reserva.data_retirada).toLocaleString('pt-BR')}</td>
-                  <td>{new Date(reserva.data_devolucao_prevista).toLocaleString('pt-BR')}</td>
+                  <td>{new Date(reserva.dataRetirada).toLocaleString('pt-BR')}</td>
+                  <td>{new Date(reserva.dataDevolucaoPrevista).toLocaleString('pt-BR')}</td>
                   <td>{reserva.responsavel}</td>
                   <td>{reserva.departamento}</td>
                 </tr>

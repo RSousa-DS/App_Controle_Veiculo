@@ -4,8 +4,8 @@ import axios from 'axios';
 export default function ReservaForm({ onReservaCreated }) {
   const [formData, setFormData] = useState({
     veiculo: '',
-    data_retirada: '',
-    data_devolucao_prevista: '',
+    dataRetirada: '',
+    dataDevolucaoPrevista: '',
     responsavel: '',
     email: '',
     departamento: ''
@@ -24,25 +24,25 @@ export default function ReservaForm({ onReservaCreated }) {
     setSuccess(false);
     try {
       // Converter datas para ISO antes de enviar para o backend
-      const data_retirada_iso = new Date(formData.data_retirada).toISOString();
-      const data_devolucao_prevista_iso = new Date(formData.data_devolucao_prevista).toISOString();
+      const dataRetirada = new Date(formData.dataRetirada).toISOString();
+      const dataDevolucaoPrevista = new Date(formData.dataDevolucaoPrevista).toISOString();
       const response = await axios.post('/api/reservas/', {
         ...formData,
-        data_retirada: data_retirada_iso,
-        data_devolucao_prevista: data_devolucao_prevista_iso
+        dataRetirada,
+        dataDevolucaoPrevista
       }); 
       setSuccess(true);
       setFormData({
         veiculo: '',
-        data_retirada: '',
-        data_devolucao_prevista: '',
+        dataRetirada: '',
+        dataDevolucaoPrevista: '',
         responsavel: '',
         email: '',
         departamento: ''
       });
       if (onReservaCreated) onReservaCreated(response.data);
     } catch (err) {
-      setError('Erro ao criar reserva. Por favor, tente novamente.');
+      setError('Erro ao criar reserva. Horário Indisponível!');
     }
   };
 
@@ -101,9 +101,9 @@ export default function ReservaForm({ onReservaCreated }) {
           <input
             type="datetime-local"
             className="form-control"
-            name="data_retirada"
+            name="dataRetirada"
             required
-            value={formData.data_retirada}
+            value={formData.dataRetirada}
             onChange={handleChange}
             pattern="\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"
           />
@@ -113,9 +113,9 @@ export default function ReservaForm({ onReservaCreated }) {
           <input
             type="datetime-local"
             className="form-control"
-            name="data_devolucao_prevista"
+            name="dataDevolucaoPrevista"
             required
-            value={formData.data_devolucao_prevista}
+            value={formData.dataDevolucaoPrevista}
             onChange={handleChange}
             pattern="\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"
           />

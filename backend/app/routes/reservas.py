@@ -17,8 +17,8 @@ def check_disponibilidade_veiculo(db: Session, veiculo: str, inicio: datetime, f
         models.Reserva.veiculo == veiculo,
         models.Reserva.status_devolucao == "Reservado",
         (
-            (models.Reserva.data_retirada <= fim) &
-            (models.Reserva.data_devolucao_prevista >= inicio)
+            (models.Reserva.dataRetirada <= fim) &
+            (models.Reserva.dataDevolucaoPrevista >= inicio)
         )
     )
     
@@ -29,7 +29,7 @@ def check_disponibilidade_veiculo(db: Session, veiculo: str, inicio: datetime, f
 
 @router.post("/", response_model=schemas.Reserva)
 def criar_reserva(reserva: schemas.ReservaCreate, db: Session = Depends(get_db)):
-    if not check_disponibilidade_veiculo(db, reserva.veiculo, reserva.data_retirada, reserva.data_devolucao_prevista):
+    if not check_disponibilidade_veiculo(db, reserva.veiculo, reserva.dataRetirada, reserva.dataDevolucaoPrevista):
         raise HTTPException(
             status_code=400,
             detail="Veículo já reservado neste período"
@@ -59,11 +59,11 @@ def listar_reservas(
         query = query.filter(models.Reserva.responsavel.ilike(f"%{responsavel}%"))
     if data:
         query = query.filter(
-            (models.Reserva.data_retirada <= f"{data} 23:59:59") &
-            (models.Reserva.data_devolucao_prevista >= f"{data} 00:00:00")
+            (models.Reserva.dataRetirada <= f"{data} 23:59:59") &
+            (models.Reserva.dataDevolucaoPrevista >= f"{data} 00:00:00")
         )
     
-    return query.order_by(models.Reserva.data_retirada.desc()).all()
+    return query.order_by(models.Reserva.dataRetirada.desc()).all()
 
 @router.get("/minhas-reservas/{email}", response_model=List[schemas.Reserva])
 def minhas_reservas(email: str, db: Session = Depends(get_db)):
@@ -73,7 +73,7 @@ def minhas_reservas(email: str, db: Session = Depends(get_db)):
             models.Reserva.email == email,
             models.Reserva.status_devolucao == "Reservado"
         )
-        .order_by(models.Reserva.data_retirada)
+        .order_by(models.Reserva.dataRetirada)
         .all()
     )
 
