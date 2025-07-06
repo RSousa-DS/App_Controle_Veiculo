@@ -1,127 +1,247 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Query, Path, Form
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import shutil
+from pathlib import Path as PathLib
 from typing import List, Optional
 
 from .. import models, schemas
 from ..database import get_db
+from ..schemas import StatusReserva
 
-router = APIRouter()
+router = APIRouter(prefix="/api/reservas", tags=["reservas"])
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = PathLib("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
-def check_disponibilidade_veiculo(db: Session, veiculo: str, inicio: datetime, fim: datetime, reserva_id: int = None):
+def check_disponibilidade_veiculo(
+    db: Session, 
+    veiculo: str, 
+    inicio: datetime, 
+    fim: datetime, 
+    reserva_id: int = None
+) -> bool:
+    """Verifica se o veículo está disponível no período especificado"""
     query = db.query(models.Reserva).filter(
         models.Reserva.veiculo == veiculo,
-        models.Reserva.status_devolucao == "Reservado",
+        models.Reserva.status_devolucao.in_([
+            StatusReserva.RESERVADO, 
+            StatusReserva.EM_ANDAMENTO
+        ]),
         (
-            (models.Reserva.dataRetirada <= fim) &
-            (models.Reserva.dataDevolucaoPrevista >= inicio)
+            (models.Reserva.data_retirada <= fim) &
+            (models.Reserva.data_devolucao_prevista >= inicio)
         )
     )
     
     if reserva_id:
         query = query.filter(models.Reserva.id != reserva_id)
         
-    return query.first() is None
+    return db.query(query.exists()).scalar() is False
 
-@router.post("/", response_model=schemas.Reserva)
+@router.post("/", 
+    response_model=schemas.Reserva,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cria uma nova reserva de veículo"
+)
 def criar_reserva(reserva: schemas.ReservaCreate, db: Session = Depends(get_db)):
-    if not check_disponibilidade_veiculo(db, reserva.veiculo, reserva.dataRetirada, reserva.dataDevolucaoPrevista):
+    """
+    Cria uma nova reserva de veículo.
+    
+    - **veiculo**: Nome do veículo a ser reservado
+    - **data_retirada**: Data e hora de retirada do veículo
+    - **data_devolucao_prevista**: Data e hora prevista para devolução
+    - **responsavel**: Nome do responsável pela reserva
+    - **email**: E-mail do responsável
+    - **departamento**: Departamento do responsável
+    """
+    # Verificar disponibilidade do veículo
+    if not check_disponibilidade_veiculo(
+        db, 
+        reserva.veiculo, 
+        reserva.data_retirada, 
+        reserva.data_devolucao_prevista
+    ):
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Veículo já reservado neste período"
         )
     
+    # Criar a reserva
     db_reserva = models.Reserva(**reserva.model_dump())
     db.add(db_reserva)
     db.commit()
     db.refresh(db_reserva)
+    
     return db_reserva
 
-@router.get("/", response_model=List[schemas.Reserva])
+@router.get("/", 
+    response_model=List[schemas.Reserva],
+    summary="Lista todas as reservas com filtros opcionais"
+)
 def listar_reservas(
-    veiculo: Optional[str] = None,
-    status: Optional[str] = None,
-    responsavel: Optional[str] = None,
-    data: Optional[str] = None,
+    veiculo: Optional[str] = Query(None, description="Filtrar por veículo"),
+    status: Optional[StatusReserva] = Query(None, description="Filtrar por status"),
+    responsavel: Optional[str] = Query(None, description="Filtrar por nome do responsável"),
+    data_inicio: Optional[datetime] = Query(None, description="Data inicial para filtro"),
+    data_fim: Optional[datetime] = Query(None, description="Data final para filtro"),
     db: Session = Depends(get_db)
 ):
+    """
+    Lista todas as reservas, com filtros opcionais.
+    """
     query = db.query(models.Reserva)
     
+    # Aplicar filtros
     if veiculo:
-        query = query.filter(models.Reserva.veiculo == veiculo)
+        query = query.filter(models.Reserva.veiculo.ilike(f"%{veiculo}%"))
     if status:
         query = query.filter(models.Reserva.status_devolucao == status)
     if responsavel:
         query = query.filter(models.Reserva.responsavel.ilike(f"%{responsavel}%"))
-    if data:
-        query = query.filter(
-            (models.Reserva.dataRetirada <= f"{data} 23:59:59") &
-            (models.Reserva.dataDevolucaoPrevista >= f"{data} 00:00:00")
-        )
+    if data_inicio:
+        query = query.filter(models.Reserva.data_retirada >= data_inicio)
+    if data_fim:
+        query = query.filter(models.Reserva.data_devolucao_prevista <= data_fim)
     
-    return query.order_by(models.Reserva.dataRetirada.desc()).all()
+    # Ordenar por data de retirada (mais recentes primeiro)
+    return query.order_by(models.Reserva.data_retirada.desc()).all()
 
-@router.get("/minhas-reservas/{email}", response_model=List[schemas.Reserva])
-def minhas_reservas(email: str, db: Session = Depends(get_db)):
+@router.get("/minhas/{email}", 
+    response_model=List[schemas.Reserva],
+    summary="Lista as reservas de um e-mail específico"
+)
+def minhas_reservas(
+    email: str = Path(..., description="E-mail do responsável"),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista todas as reservas associadas a um e-mail específico.
+    """
     return (
         db.query(models.Reserva)
-        .filter(
-            models.Reserva.email == email,
-            models.Reserva.status_devolucao == "Reservado"
-        )
-        .order_by(models.Reserva.dataRetirada)
+        .filter(models.Reserva.email == email)
+        .order_by(models.Reserva.data_retirada.desc())
         .all()
     )
 
-@router.post("/{reserva_id}/devolucao")
+@router.post("/devolucao",
+    status_code=status.HTTP_200_OK,
+    summary="Registra a devolução de um veículo"
+)
 async def registrar_devolucao(
-    reserva_id: int,
-    km_devolvido: int,
-    local_estacionado: str,
-    imagem_painel: UploadFile = File(...),
+    reserva_id: int = Form(..., description="ID da reserva"),
+    km_devolvido: int = Form(..., description="Quilometragem no momento da devolução"),
+    local_estacionado: str = Form(..., description="Local onde o veículo foi estacionado"),
+    observacoes: Optional[str] = Form(None, description="Observações adicionais"),
+    imagem_painel: UploadFile = File(..., description="Foto do painel do veículo"),
     db: Session = Depends(get_db)
 ):
-    # Verifica se a reserva existe e está ativa
-    reserva = db.query(models.Reserva).filter(
-        models.Reserva.id == reserva_id,
-        models.Reserva.status_devolucao == "Reservado"
-    ).first()
-    
+    """
+    Registra a devolução de um veículo, atualizando a reserva com os dados da devolução.
+    """
+    # Verificar se a reserva existe
+    reserva = db.query(models.Reserva).filter(models.Reserva.id == reserva_id).first()
     if not reserva:
-        raise HTTPException(status_code=404, detail="Reserva não encontrada ou já finalizada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Reserva não encontrada"
+        )
+        
+    # Verificar se o veículo já foi devolvido
+    if reserva.status_devolucao == StatusReserva.DEVOLVIDO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Veículo já foi devolvido"
+        )
     
-    # Salva a imagem
-    file_path = os.path.join(UPLOAD_DIR, f"painel_{reserva_id}_{imagem_painel.filename}")
-    with open(file_path, "wb") as buffer:
-        buffer.write(await imagem_painel.read())
-    
-    # Atualiza a reserva
-    reserva.status_devolucao = "Devolvido"
-    reserva.km_devolvido = km_devolvido
-    reserva.local_estacionado = local_estacionado
-    reserva.imagem_painel = f"/{file_path.replace('\\', '/')}"
-    reserva.data_devolucao_real = datetime.utcnow()
-    
-    db.commit()
-    return {"status": "success", "message": "Devolução registrada com sucesso"}
+    try:
+        # Criar diretório de uploads se não existir
+        (UPLOAD_DIR / "paineis").mkdir(exist_ok=True)
+        
+        # Salvar a imagem do painel
+        file_ext = PathLib(imagem_painel.filename).suffix or '.jpg'
+        file_name = f"painel_{reserva_id}_{int(datetime.utcnow().timestamp())}{file_ext}"
+        file_path = UPLOAD_DIR / "paineis" / file_name
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(imagem_painel.file, buffer)
+        
+        # Atualizar a reserva com os dados da devolução
+        reserva.km_devolvido = km_devolvido
+        reserva.local_estacionado = local_estacionado
+        reserva.imagem_painel = str(file_path.relative_to(UPLOAD_DIR))
+        reserva.status_devolucao = StatusReserva.DEVOLVIDO
+        reserva.data_devolucao_real = datetime.utcnow()
+        reserva.observacoes = observacoes
+        
+        db.commit()
+        db.refresh(reserva)
+        
+        return {
+            "ok": True, 
+            "message": "Devolução registrada com sucesso",
+            "reserva_id": reserva.id
+        }
+        
+    except Exception as e:
+        # Em caso de erro, fazer rollback e retornar erro
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar devolução: {str(e)}"
+        )
 
-@router.delete("/{reserva_id}")
-def excluir_reserva(reserva_id: int, senha: str, db: Session = Depends(get_db)):
-    if senha != "12345":
-        raise HTTPException(status_code=403, detail="Senha incorreta")
-    
-    reserva = db.query(models.Reserva).filter(
-        models.Reserva.id == reserva_id,
-        models.Reserva.status_devolucao == "Reservado"
-    ).first()
-    
+@router.delete(
+    "/{reserva_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Remove uma reserva (apenas para administradores)"
+)
+def excluir_reserva(
+    reserva_id: int = Path(..., description="ID da reserva a ser removida"),
+    senha: str = Query(..., description="Senha de administração"),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove uma reserva do sistema (apenas para administradores).
+    Em produção, substitua a verificação de senha por autenticação JWT.
+    """
+    # Em um ambiente real, use autenticação JWT
+    if senha != "admin123":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Não autorizado"
+        )
+        
+    # Buscar a reserva
+    reserva = db.query(models.Reserva).filter(models.Reserva.id == reserva_id).first()
     if not reserva:
-        raise HTTPException(status_code=404, detail="Reserva não encontrada ou já finalizada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Reserva não encontrada"
+        )
     
-    db.delete(reserva)
-    db.commit()
-    return {"status": "success", "message": "Reserva excluída com sucesso"}
+    # Não permitir exclusão de reservas já finalizadas sem confirmação
+    if reserva.status_devolucao == StatusReserva.DEVOLVIDO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é possível excluir uma reserva já finalizada"
+        )
+    
+    try:
+        # Remover a reserva
+        db.delete(reserva)
+        db.commit()
+        
+        return {
+            "ok": True, 
+            "message": "Reserva removida com sucesso"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao remover reserva: {str(e)}"
+        )
