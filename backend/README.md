@@ -22,18 +22,16 @@
 
 ## Executando o Servidor
 
-## PARA EXECUTAR O COMANDO SEGUINTE PRECISA DAR ESSE PRIMEIRO .\venv\Scripts\activate
+## PARA EXECUTAR O COMANDO SEGUINTE PRECISA DAR ESSE PRIMEIRO nPM START
 
-```bash
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
 
-O servidor estará disponível em: http://localhost:8000
+
+O servidor estará disponível em: http://localhost:3001
 
 ## Documentação da API
 
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
+- **Swagger UI:** http://localhost:3001/docs
+- **ReDoc:** http://localhost:3001/redoc
 
 ## Endpoints Principais
 
