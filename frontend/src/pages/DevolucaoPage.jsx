@@ -903,361 +903,7 @@ const DevolucaoPage = () => {
         )}
       </TableContainer>
 
-      {/* Modal de devolução */}
-      {showModal && selectedReserva && (
-        <ModalOverlay onClick={handleCloseModal}>
-          <ModalContent onClick={e => e.stopPropagation()}>
-            <CloseButton onClick={handleCloseModal}>×</CloseButton>
-            <ModalTitle>
-              <FaCheckCircle /> Registrar Devolução
-            </ModalTitle>
-            
-            <ModalInfo>
-              <FaInfoCircle /> Preencha os dados da devolução do veículo
-            </ModalInfo>
-            
-            <DetailCard>
-              <FaCar style={{ color: colors.primary, fontSize: '1.2rem' }} />
-              <div>
-                <div style={{ fontSize: '0.8rem', color: colors.textSecondary, marginBottom: '2px' }}>Veículo</div>
-                <div style={{ fontWeight: 500 }}>{selectedReserva.veiculo}</div>
-              </div>
-            </DetailCard>
-            
-            <form onSubmit={handleSubmit}>
-              {error && (
-                <MessageContainer type="error">
-                  <FaInfoCircle />
-                  <div>{error}</div>
-                </MessageContainer>
-              )}
-              
-              {success && (
-                <MessageContainer type="success">
-                  <FaCheckCircle />
-                  <div>{success}</div>
-                </MessageContainer>
-              )}
-              
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
-                    fontWeight: 500,
-                    color: colors.text,
-                    fontSize: '0.95rem'
-                  }}>
-                    Quilometragem Atual
-                    <span style={{ color: colors.danger, marginLeft: '4px' }}>*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="kmDevolvido"
-                    value={formData.kmDevolvido}
-                    onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: `1px solid ${formErrors.kmDevolvido ? colors.danger : colors.border}`,
-                      fontSize: '0.95rem',
-                      fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                    }}
-                    min="0"
-                    step="1"
-                    placeholder="Digite a quilometragem atual"
-                  />
-                  {formErrors.kmDevolvido && (
-                    <div style={{
-                      color: colors.danger,
-                      fontSize: '0.8rem',
-                      marginTop: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <FaInfoCircle /> {formErrors.kmDevolvido}
-                    </div>
-                  )}
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontWeight: 500,
-                    color: colors.text,
-                    fontSize: '0.95rem'
-                  }}>
-                    Local onde o veículo foi estacionado
-                    <span style={{ color: colors.danger, marginLeft: '4px' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="localEstacionado"
-                    value={formData.localEstacionado}
-                    onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: `1px solid ${formErrors.localEstacionado ? colors.danger : colors.border}`,
-                      fontSize: '0.95rem',
-                      fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                    }}
-                    placeholder="Ex.: Estacionamento térreo, vaga 12"
-                  />
-                  {formErrors.localEstacionado && (
-                    <div style={{
-                      color: colors.danger,
-                      fontSize: '0.8rem',
-                      marginTop: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <FaInfoCircle /> {formErrors.localEstacionado}
-                    </div>
-                  )}
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontWeight: 500,
-                    color: colors.text,
-                    fontSize: '0.95rem'
-                  }}>
-                    Observações (Opcional)
-                  </label>
-                  <textarea
-                    name="observacoes"
-                    value={formData.observacoes}
-                    onChange={handleChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: `1px solid ${colors.border}`,
-                      fontSize: '0.95rem',
-                      fontFamily: 'inherit',
-                      minHeight: '100px',
-                      resize: 'vertical',
-                      transition: 'all 0.2s',
-                    }}
-                    placeholder="Alguma observação sobre o estado do veículo?"
-                  />
-                </div>
-                
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontWeight: 500,
-                    color: colors.text,
-                    fontSize: '0.95rem'
-                  }}>
-                    Foto do Painel (Opcional)
-                  </label>
-                  <div style={{
-                    border: `2px dashed ${colors.border}`,
-                    borderRadius: '8px',
-                    padding: '20px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      borderColor: colors.primary,
-                      background: `${colors.primaryLight}20`
-                    }
-                  }}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileChange}
-                      style={{ display: 'none' }}
-                      id="painel-upload"
-                    />
-                    <label 
-                      htmlFor="painel-upload"
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                        width: '100%',
-                        minHeight: '120px',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      {painelPreview ? (
-                        <>
-                          <div style={{ 
-                            position: 'relative',
-                            width: '100%',
-                            maxWidth: '300px',
-                            margin: '0 auto 16px',
-                            borderRadius: '6px',
-                            overflow: 'hidden',
-                            border: `1px solid ${colors.border}`
-                          }}>
-                            <img 
-                              src={painelPreview} 
-                              alt="Pré-visualização do painel" 
-                              style={{ 
-                                display: 'block',
-                                width: '100%',
-                                height: 'auto',
-                                maxHeight: '200px',
-                                objectFit: 'contain',
-                                borderRadius: '4px'
-                              }} 
-                            />
-                          </div>
-                          <div style={{ 
-                            color: colors.primary, 
-                            fontWeight: 500, 
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            marginTop: '12px'
-                          }}>
-                            <FaCamera /> Trocar imagem
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '50%',
-                            backgroundColor: `${colors.primaryLight}30`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: '12px'
-                          }}>
-                            <FaCamera style={{ 
-                              fontSize: '24px', 
-                              color: colors.primary,
-                            }} />
-                          </div>
-                          <div style={{ 
-                            color: colors.primary, 
-                            fontWeight: 500,
-                            marginBottom: '4px',
-                            fontSize: '1rem'
-                          }}>
-                            Adicionar foto do painel
-                          </div>
-                          <div style={{ 
-                            fontSize: '0.85rem', 
-                            color: colors.textSecondary,
-                            maxWidth: '280px',
-                            margin: '0 auto',
-                            lineHeight: '1.4'
-                          }}>
-                            Tire uma foto nítida do painel do veículo mostrando claramente a quilometragem
-                          </div>
-                        </>
-                      )}
-                    </label>
-                  </div>
-                  <div style={{ 
-                    fontSize: '0.8rem', 
-                    color: colors.textSecondary,
-                    marginTop: '4px',
-                    fontStyle: 'italic'
-                  }}>
-                    * A foto deve mostrar claramente a quilometragem do veículo
-                  </div>
-                </div>
-              </div>
-              
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'flex-end', 
-                gap: '12px',
-                flexWrap: 'wrap',
-                borderTop: `1px solid ${colors.border}`,
-                paddingTop: '20px',
-                marginTop: '8px'
-              }}>
-                <ActionButton
-                  type="button"
-                  variant=""
-                  onClick={handleCloseModal}
-                  style={{ 
-                    background: 'transparent', 
-                    color: colors.text, 
-                    border: `1px solid ${colors.border}`
-                  }}
-                >
-                  Cancelar
-                </ActionButton>
-                <ActionButton
-                  type="submit"
-                  disabled={isSubmitting}
-                  variant="primary"
-                  style={{ 
-                    background: colors.secondary,
-                    minWidth: '180px',
-                    opacity: isSubmitting ? 0.8 : 1
-                  }}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 38 38" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '8px' }}>
-                        <defs>
-                          <linearGradient x1="8.042%" y1="0%" x2="65.682%" y2="23.865%" id="a">
-                            <stop stopColor="#fff" stopOpacity="0" offset="0%"/>
-                            <stop stopColor="#fff" stopOpacity=".631" offset="63.146%"/>
-                            <stop stopColor="#fff" offset="100%"/>
-                          </linearGradient>
-                        </defs>
-                        <g fill="none" fillRule="evenodd">
-                          <g transform="translate(1 1)">
-                            <path d="M36 18c0-9.94-8.06-18-18-18" id="Oval-2" stroke="url(#a)" strokeWidth="2">
-                              <animateTransform
-                                attributeName="transform"
-                                type="rotate"
-                                from="0 18 18"
-                                to="360 18 18"
-                                dur="0.9s"
-                                repeatCount="indefinite" />
-                            </path>
-                            <circle fill="#fff" cx="36" cy="18" r="1">
-                              <animateTransform
-                                attributeName="transform"
-                                type="rotate"
-                                from="0 18 18"
-                                to="360 18 18"
-                                dur="0.9s"
-                                repeatCount="indefinite" />
-                            </circle>
-                          </g>
-                        </g>
-                      </svg>
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <FaCheckCircle style={{ marginRight: '6px' }} />
-                      Confirmar Devolução
-                    </>
-                  )}
-                </ActionButton>
-              </div>
-            </form>
-          </ModalContent>
-        </ModalOverlay>
-      )}
+
       
       {/* Modal de visualização */}
       {showViewModal && viewReserva && (
@@ -1363,6 +1009,90 @@ const DevolucaoPage = () => {
               )}
             </div>
             
+            {viewReserva.observacoes && (
+              <div style={{ 
+                backgroundColor: colors.gray50, 
+                padding: '16px', 
+                borderRadius: '8px',
+                marginBottom: '24px'
+              }}>
+                <div style={{ 
+                  fontSize: '0.9rem', 
+                  color: colors.textSecondary,
+                  marginBottom: '8px',
+                  fontWeight: 500
+                }}>
+                  Observações:
+                </div>
+                <div style={{ whiteSpace: 'pre-line' }}>{viewReserva.observacoes}</div>
+              </div>
+            )}
+            
+            {viewReserva.imagemPainel && (
+              <div style={{ marginTop: '24px' }}>
+                <div style={{ 
+                  fontSize: '0.95rem', 
+                  fontWeight: 500,
+                  marginBottom: '12px',
+                  color: colors.text
+                }}>
+                  Foto do Painel:
+                </div>
+                <img 
+                  src={`http://localhost:3001${viewReserva.imagemPainel}`} 
+                  alt="Painel do veículo" 
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '300px',
+                    borderRadius: '8px',
+                    border: `1px solid ${colors.border}`,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                  onError={(e) => {
+                    console.error('Erro ao carregar a imagem:', e);
+                    e.target.style.display = 'none';
+                    const errorMsg = document.createElement('div');
+                    errorMsg.textContent = 'Erro ao carregar a imagem';
+                    errorMsg.style.color = colors.error;
+                    errorMsg.style.marginTop = '8px';
+                    e.target.parentNode.appendChild(errorMsg);
+                  }}
+                />
+              </div>
+            )}
+            
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              marginTop: '24px',
+              paddingTop: '16px',
+              borderTop: `1px solid ${colors.border}`
+            }}>
+              <ActionButton 
+                type="button" 
+                onClick={() => setShowViewModal(false)}
+                style={{ 
+                  background: colors.primary,
+                  color: 'white'
+                }}
+              >
+                Fechar
+              </ActionButton>
+            </div>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+      
+      {/* Modal de devolução */}
+      {showModal && selectedReserva && (
+        <ModalOverlay onClick={() => setShowModal(false)}>
+          <ModalContent onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <CloseButton onClick={() => setShowModal(false)}>×</CloseButton>
+            <ModalTitle>
+              <FaCar style={{ marginRight: '8px' }} />
+              Registrar Devolução
+            </ModalTitle>
+            
             <form onSubmit={handleSubmit}>
               {error && (
                 <MessageContainer type="error">
@@ -1378,24 +1108,48 @@ const DevolucaoPage = () => {
                 </MessageContainer>
               )}
               
-              {submitAttempted && Object.keys(formErrors).length > 0 && (
-                <MessageContainer type="warning">
-                  <FaInfoCircle style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    Por favor, corrija os seguintes erros antes de continuar:
-                    <ErrorList>
-                      {Object.entries(formErrors).map(([field, error]) => (
-                        error && <li key={field}>{error}</li>
-                      ))}
-                    </ErrorList>
-                  </div>
-                </MessageContainer>
-              )}
               <div style={{ marginBottom: '24px' }}>
+                <div style={{ 
+                  backgroundColor: colors.gray50, 
+                  padding: '16px', 
+                  borderRadius: '8px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    color: colors.textSecondary,
+                    marginBottom: '8px',
+                    fontWeight: 500
+                  }}>
+                    Veículo: <span style={{ color: colors.text, fontWeight: 600 }}>{selectedReserva.veiculo}</span>
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    color: colors.textSecondary,
+                    marginBottom: '8px'
+                  }}>
+                    Responsável: <span style={{ color: colors.text, fontWeight: 500 }}>{selectedReserva.responsavel}</span>
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    color: colors.textSecondary
+                  }}>
+                    Retirada em: <span style={{ color: colors.text, fontWeight: 500 }}>
+                      {new Date(selectedReserva.dataRetirada).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+                
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px', 
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
                     fontWeight: 500,
                     color: colors.text,
                     fontSize: '0.95rem'
@@ -1417,14 +1171,7 @@ const DevolucaoPage = () => {
                       }`,
                       fontSize: '0.95rem',
                       fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                      '&:focus': {
-                        outline: 'none',
-                        borderColor: formErrors.kmDevolvido ? colors.danger : colors.primary,
-                        boxShadow: `0 0 0 2px ${
-                          formErrors.kmDevolvido ? colors.dangerLight : colors.primaryLight
-                        }`
-                      }
+                      transition: 'all 0.2s'
                     }}
                     min="0"
                     step="1"
@@ -1469,14 +1216,7 @@ const DevolucaoPage = () => {
                       }`,
                       fontSize: '0.95rem',
                       fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                      '&:focus': {
-                        outline: 'none',
-                        borderColor: formErrors.localEstacionado ? colors.danger : colors.primary,
-                        boxShadow: `0 0 0 2px ${
-                          formErrors.localEstacionado ? colors.dangerLight : colors.primaryLight
-                        }`
-                      }
+                      transition: 'all 0.2s'
                     }}
                     placeholder="Ex.: Estacionamento térreo, vaga 12"
                   />
@@ -1508,26 +1248,18 @@ const DevolucaoPage = () => {
                   <input
                     type="text"
                     name="responsavel_devolucao"
-                    value={formData.responsavelDevolucao}
+                    value={formData.responsavel_devolucao}
                     onChange={handleChange}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
                       borderRadius: '8px',
                       border: `1px solid ${
-                        formErrors.responsavelDevolucao ? colors.danger : colors.border
+                        formErrors.responsavel_devolucao ? colors.danger : colors.border
                       }`,
                       fontSize: '0.95rem',
                       fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                      marginBottom: formErrors.responsavelDevolucao ? '4px' : '20px',
-                      '&:focus': {
-                        outline: 'none',
-                        borderColor: formErrors.responsavelDevolucao ? colors.danger : colors.primary,
-                        boxShadow: `0 0 0 2px ${
-                          formErrors.responsavelDevolucao ? colors.dangerLight : colors.primaryLight
-                        }`
-                      }
+                      transition: 'all 0.2s'
                     }}
                     placeholder="Nome do responsável pela devolução"
                   />
@@ -1535,16 +1267,16 @@ const DevolucaoPage = () => {
                     <div style={{
                       color: colors.danger,
                       fontSize: '0.8rem',
-                      marginBottom: '16px',
+                      marginTop: '4px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      <FaInfoCircle /> {formErrors.responsavelDevolucao}
+                      <FaInfoCircle /> {formErrors.responsavel_devolucao}
                     </div>
                   )}
                 </div>
-
+                
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
                     display: 'block',
@@ -1557,7 +1289,7 @@ const DevolucaoPage = () => {
                   </label>
                   <textarea
                     name="observacoes"
-                    value={formData.observacoes}
+                    value={formData.observacoes || ''}
                     onChange={handleChange}
                     style={{
                       width: '100%',
@@ -1568,18 +1300,13 @@ const DevolucaoPage = () => {
                       minHeight: '100px',
                       resize: 'vertical',
                       fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                      '&:focus': {
-                        outline: 'none',
-                        borderColor: colors.primary,
-                        boxShadow: `0 0 0 2px ${colors.primaryLight}`
-                      }
+                      transition: 'all 0.2s'
                     }}
                     placeholder="Adicione observações sobre a devolução (opcional)"
                   />
                 </div>
                 
-                <div>
+                <div style={{ marginBottom: '20px' }}>
                   <label style={{
                     display: 'block',
                     marginBottom: '8px',
@@ -1590,7 +1317,7 @@ const DevolucaoPage = () => {
                     Foto do Painel
                     <span style={{ color: colors.danger, marginLeft: '4px' }}>*</span>
                   </label>
-                  {formErrors.imagemPainel && !painelFile && (
+                  {formErrors.imagemPainel && !painelPreview && (
                     <div style={{
                       color: colors.danger,
                       fontSize: '0.8rem',
@@ -1617,13 +1344,7 @@ const DevolucaoPage = () => {
                       marginBottom: '12px',
                       backgroundColor: painelPreview ? 'transparent' : colors.gray50,
                       transition: 'all 0.2s',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        borderColor: formErrors.imagemPainel ? colors.danger : colors.primary,
-                        backgroundColor: formErrors.imagemPainel 
-                          ? colors.dangerLight + '20' 
-                          : colors.primaryLight + '20'
-                      }
+                      cursor: 'pointer'
                     }}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -1643,15 +1364,7 @@ const DevolucaoPage = () => {
                       type="file"
                       accept="image/jpeg, image/png, image/jpg"
                       capture="environment"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileChange(e);
-                          setFormData(prev => ({
-                            ...prev,
-                            imagemPainel: URL.createObjectURL(e.target.files[0])
-                          }));
-                        }
-                      }}
+                      onChange={handleFileChange}
                       style={{
                         display: 'none'
                       }}
