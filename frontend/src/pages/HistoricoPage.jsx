@@ -454,6 +454,142 @@ export default function HistoricoPage() {
     }
   };
 
+  // Cores baseadas no layout do menu
+  const colors = {
+    primary: '#1a73e8',
+    primaryLight: '#e8f0fe',
+    secondary: '#34a853',
+    background: '#f8f9fa',
+    white: '#ffffff',
+    text: '#202124',
+    textSecondary: '#5f6368',
+    border: '#dadce0',
+    success: '#34a853',
+    warning: '#f9ab00',
+    error: '#d93025',
+    danger: '#dc3545',
+    gray50: '#f8f9fa',
+    gray100: '#f8f9fa',
+    gray200: '#e9ecef',
+    gray300: '#dee2e6',
+    gray400: '#ced4da',
+    gray500: '#adb5bd'
+  };
+
+  const StyledTable = styled.table`
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 0.9rem;
+    background: ${colors.white};
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid ${colors.border};
+    }
+    
+    th {
+      background-color: ${colors.primary};
+      color: white;
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background-color: ${colors.gray50};
+    }
+    
+    @media (max-width: 768px) {
+      display: block;
+      
+      thead {
+        display: none;
+      }
+      
+      tbody, tr, td {
+        display: block;
+        width: 100%;
+      }
+      
+      tr {
+        margin-bottom: 16px;
+        border: 1px solid ${colors.border};
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+        border-bottom: 1px solid ${colors.border};
+      }
+      
+      td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 16px;
+        width: 45%;
+        padding-right: 10px;
+        text-align: left;
+        font-weight: 500;
+        color: ${colors.text};
+      }
+      
+      td:last-child {
+        border-bottom: none;
+      }
+    }
+  `;
+
+  const StatusBadge = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    
+    ${({ $status }) => {
+      switch($status) {
+        case 'finalizada':
+          return `
+            background-color: ${colors.success}20;
+            color: ${colors.success};
+          `;
+        case 'pendente':
+          return `
+            background-color: ${colors.warning}20;
+            color: ${colors.warning};
+          `;
+        case 'atrasada':
+          return `
+            background-color: ${colors.danger}20;
+            color: ${colors.danger};
+          `;
+        default:
+          return `
+            background-color: ${colors.gray200};
+            color: ${colors.text};
+          `;
+      }
+    }}
+  `;
+
   return (
     <Container>
       <Title>Histórico de Reservas</Title>
@@ -575,62 +711,105 @@ export default function HistoricoPage() {
             </p>
           </NoResults>
         ) : (
-          <ReservasGrid>
-            {reservasFiltradas.map((reserva) => {
-              const status = reserva.status_devolucao === 'Concluída' ? 'finalizada' : 'pendente';
-              
-              return (
-                <ReservaCard key={reserva.id}>
-                  <ReservaHeader $status={status}>
-                    <VeiculoInfo>
-                      {reserva.veiculos?.modelo || 'Veículo não encontrado'}
-                      {reserva.veiculos?.placa && ` (${reserva.veiculos.placa})`}
-                    </VeiculoInfo>
-                    <StatusBadge $status={status}>
-                      {status === 'finalizada' ? (
-                        <>
-                          <FaCheckCircle /> Finalizada
-                        </>
-                      ) : (
-                        <>
-                          <FaClock /> Pendente
-                        </>
-                      )}
-                    </StatusBadge>
-                  </ReservaHeader>
-                  <ReservaBody>
-                    <InfoRow>
-                      <FaUser />
-                      <span>{reserva.responsavel}</span>
-                    </InfoRow>
-                    
-                    <InfoRow>
-                      <FaBuilding />
-                      <span>{reserva.departamento}</span>
-                    </InfoRow>
-                    
-                    <InfoRow>
-                      <FaCalendarAlt />
-                      <DataInfo>
-                        <div><strong>Retirada:</strong> {formatarData(reserva.data_retirada)}</div>
-                        <div><strong>Devolução:</strong> {formatarData(reserva.data_devolucao_prevista)}</div>
-                        {reserva.data_devolucao && (
-                          <div><strong>Devolvido em:</strong> {formatarData(reserva.data_devolucao)}</div>
+          <div style={{ overflowX: 'auto' }}>
+            <StyledTable>
+              <thead>
+                <tr>
+                  <th>Veículo</th>
+                  <th>Responsável</th>
+                  <th>Departamento</th>
+                  <th>Retirada</th>
+                  <th>Devolução</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservasFiltradas.map((reserva) => {
+                  const status = reserva.status_devolucao === 'Concluída' ? 'finalizada' : 'pendente';
+                  const dataAtual = new Date();
+                  const dataDevolucao = new Date(reserva.data_devolucao_prevista);
+                  const atrasada = status === 'pendente' && dataAtual > dataDevolucao;
+                  
+                  return (
+                    <tr key={reserva.id}>
+                      <td data-label="Veículo">
+                        <div style={{ fontWeight: 500 }}>{reserva.veiculos?.modelo || 'Veículo não encontrado'}</div>
+                        {reserva.veiculos?.placa && (
+                          <div style={{ fontSize: '0.85rem', color: colors.textSecondary }}>
+                            {reserva.veiculos.placa}
+                          </div>
                         )}
-                      </DataInfo>
-                    </InfoRow>
-                    
-                    {reserva.observacoes && (
-                      <InfoRow>
-                        <FaInfoCircle />
-                        <span>{reserva.observacoes}</span>
-                      </InfoRow>
-                    )}
-                  </ReservaBody>
-                </ReservaCard>
-              );
-            })}
-          </ReservasGrid>
+                      </td>
+                      <td data-label="Responsável">
+                        <div>{reserva.responsavel}</div>
+                        <div style={{ fontSize: '0.85rem', color: colors.textSecondary }}>
+                          {reserva.email}
+                        </div>
+                      </td>
+                      <td data-label="Departamento">
+                        {reserva.departamento}
+                      </td>
+                      <td data-label="Retirada">
+                        {formatarData(reserva.data_retirada)}
+                      </td>
+                      <td data-label="Devolução">
+                        <div>{formatarData(reserva.data_devolucao_prevista)}</div>
+                        {reserva.data_devolucao && (
+                          <div style={{ fontSize: '0.85rem', color: colors.textSecondary }}>
+                            Devolvido: {formatarData(reserva.data_devolucao)}
+                          </div>
+                        )}
+                      </td>
+                      <td data-label="Status">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <StatusBadge $status={status}>
+                            {status === 'finalizada' ? (
+                              <>
+                                <FaCheckCircle /> Finalizada
+                              </>
+                            ) : (
+                              <>
+                                <FaClock /> Pendente
+                              </>
+                            )}
+                          </StatusBadge>
+                          {atrasada && (
+                            <StatusBadge $status="atrasada">
+                              Atrasada
+                            </StatusBadge>
+                          )}
+                        </div>
+                      </td>
+                      <td data-label="Ações">
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={() => handleDeleteClick(reserva)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: colors.danger,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseOver={(e) => e.target.style.backgroundColor = colors.gray200}
+                            onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                          >
+                            <FaTrash /> Excluir
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </StyledTable>
+          </div>
         )}
       </Section>
       
