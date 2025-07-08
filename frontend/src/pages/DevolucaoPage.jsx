@@ -755,9 +755,9 @@ const DevolucaoPage = () => {
       const fileName = `painel_${timestamp}_${randomId}.${fileExt}`;
       const filePath = `devolucoes/${new Date().getFullYear()}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${fileName}`;
 
-      // Fazer upload do arquivo
-      const { error: uploadError } = await supabase.storage
-        .from('veiculos')
+      // Tenta fazer o upload para o bucket 'publico' que já deve existir
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('publico')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -770,7 +770,7 @@ const DevolucaoPage = () => {
 
       // Obter a URL pública do arquivo
       const { data: { publicUrl } } = supabase.storage
-        .from('veiculos')
+        .from('publico')
         .getPublicUrl(filePath);
 
       if (!publicUrl) {
