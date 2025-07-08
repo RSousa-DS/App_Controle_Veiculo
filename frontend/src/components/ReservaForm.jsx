@@ -20,8 +20,18 @@ export default function ReservaForm({ onReservaCreated }) {
   useEffect(() => {
     // Buscar veículos do Supabase
     const fetchVeiculos = async () => {
-      const { data, error } = await supabase.from('veiculos').select('id, modelo');
-      if (!error && data) setVeiculos(data);
+      try {
+        const { data, error } = await supabase
+          .from('veiculos')
+          .select('id, modelo, placa')
+          .order('modelo', { ascending: true });
+        
+        if (error) throw error;
+        setVeiculos(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar veículos:', error);
+        setError('Erro ao carregar a lista de veículos');
+      }
     };
     fetchVeiculos();
   }, []);
@@ -128,7 +138,9 @@ export default function ReservaForm({ onReservaCreated }) {
           >
             <option value="">Selecione...</option>
             {veiculos.map(v => (
-              <option key={v.id} value={v.id}>{v.modelo}</option>
+              <option key={v.id} value={v.id}>
+                {v.modelo} {v.placa ? `(${v.placa})` : ''}
+              </option>
             ))}
           </select>
         </div>

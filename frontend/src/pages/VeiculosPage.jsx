@@ -2,7 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import styled, { keyframes, css } from 'styled-components';
-import { FaCar, FaPlus, FaEdit, FaSave, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { 
+  FaCar, 
+  FaPlus, 
+  FaEdit, 
+  FaSave, 
+  FaTimes, 
+  FaCheckCircle, 
+  FaExclamationCircle, 
+  FaTachometerAlt,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaInfoCircle
+} from 'react-icons/fa';
 
 // Design system colors
 const colors = {
@@ -121,30 +133,93 @@ const Button = styled.button`
       colors.primaryDark};
   }
 `;
-const TableSection = styled.div`
+const VehiclesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
   padding: 0 24px 24px 24px;
-`;
-const StyledTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
   margin-top: 16px;
+`;
+
+const VehicleCard = styled.div`
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid ${colors.border};
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
 `;
-const Th = styled.th`
+
+const VehicleHeader = styled.div`
   background: ${colors.primary};
-  color: #fff;
-  font-weight: 500;
-  padding: 10px 6px;
-  font-size: 1rem;
-  border: none;
+  color: white;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  svg {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  
+  h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 `;
-const Td = styled.td`
-  padding: 10px 6px;
-  font-size: 0.97rem;
+
+const VehicleBody = styled.div`
+  padding: 16px;
+`;
+
+const VehicleInfo = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
   color: ${colors.text};
-  border-bottom: 1px solid ${colors.border};
+  font-size: 0.95rem;
+  
+  svg {
+    color: ${colors.primary};
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+  }
+  
+  span {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+`;
+
+const EmptyState = styled.div`
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  color: ${colors.textSecondary};
+  
+  svg {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: ${colors.border};
+  }
+  
+  p {
+    margin: 8px 0 0;
+    font-size: 1.1rem;
+  }
 `;
 const StatusBadge = styled.span`
   background: ${colors.successLight};
@@ -295,41 +370,69 @@ export default function VeiculosPage() {
           </Button>
         </div>
       </FormSection>
-      <TableSection>
-        <h3 style={{ color: colors.primary, fontWeight: 500, margin: '6px 0 0 0', fontSize: '1.2rem' }}>Veículos Cadastrados</h3>
-        <StyledTable>
-          <thead>
-            <tr>
-              <Th>Modelo</Th>
-              <Th>Placa</Th>
-              <Th>Km Inicial</Th>
-              <Th>Km Locada</Th>
-              <Th>Cidade</Th>
-              <Th>Locadora</Th>
-              <Th>Observação</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><Td colSpan={7}>Carregando...</Td></tr>
-            ) : veiculos.length === 0 ? (
-              <tr><Td colSpan={7}>Nenhum veículo cadastrado.</Td></tr>
-            ) : (
-              veiculos.map(veic => (
-                <tr key={veic.id}>
-                  <Td>{veic.modelo}</Td>
-                  <Td>{veic.placa || '-'}</Td>
-                  <Td>{veic.km_inicial ?? '-'}</Td>
-                  <Td>{veic.km_locada ?? '-'}</Td>
-                  <Td>{veic.cidade || '-'}</Td>
-                  <Td>{veic.locadora || '-'}</Td>
-                  <Td>{veic.observacoes || '-'}</Td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </StyledTable>
-      </TableSection>
+      <h3 style={{ 
+        color: colors.primary, 
+        fontWeight: 600, 
+        margin: '24px 24px 0', 
+        fontSize: '1.3rem',
+        paddingBottom: '8px',
+        borderBottom: `2px solid ${colors.primary}20`
+      }}>
+        Veículos Cadastrados
+      </h3>
+      <VehiclesGrid>
+        {loading ? (
+          <EmptyState>Carregando veículos...</EmptyState>
+        ) : veiculos.length === 0 ? (
+          <EmptyState>
+            <FaCar />
+            <p>Nenhum veículo cadastrado</p>
+          </EmptyState>
+        ) : (
+          veiculos.map(veic => (
+            <VehicleCard key={veic.id}>
+              <VehicleHeader>
+                <FaCar />
+                <h3>{veic.modelo}</h3>
+              </VehicleHeader>
+              <VehicleBody>
+                {veic.placa && (
+                  <VehicleInfo>
+                    <FaCar />
+                    <span>Placa: {veic.placa}</span>
+                  </VehicleInfo>
+                )}
+                {(veic.km_inicial || veic.km_locada) && (
+                  <VehicleInfo>
+                    <FaTachometerAlt />
+                    <span>
+                      {veic.km_inicial && `Inicial: ${veic.km_inicial} km`}
+                      {veic.km_inicial && veic.km_locada && ' • '}
+                      {veic.km_locada && `Locada: ${veic.km_locada} km`}
+                    </span>
+                  </VehicleInfo>
+                )}
+                {(veic.cidade || veic.locadora) && (
+                  <VehicleInfo>
+                    <FaMapMarkerAlt />
+                    <span>
+                      {veic.cidade}
+                      {veic.cidade && veic.locadora && ' • '}
+                      {veic.locadora}
+                    </span>
+                  </VehicleInfo>
+                )}
+                {veic.observacoes && (
+                  <VehicleInfo>
+                    <FaInfoCircle />
+                    <span>{veic.observacoes}</span>
+                  </VehicleInfo>
+                )}
+              </VehicleBody>
+            </VehicleCard>
+          ))
+        )}
+      </VehiclesGrid>
     </MainContainer>
   );
 }
