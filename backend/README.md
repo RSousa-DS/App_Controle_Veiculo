@@ -1,32 +1,21 @@
 # Backend - Sistema de Controle de Veículos
 
-## Configuração do Ambiente
+### Backend Local
 
-1. **Crie um ambiente virtual** (recomendado):
-   ```bash
-   python -m venv venv
-   source venv/Scripts/activate  # No Windows: venv\Scripts\activate
-   ```
+Este projeto não possui mais backend local. Todas as operações de dados são realizadas diretamente através do Supabase.
 
-2. **Instale as dependências:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Configuração
 
-3. **Crie a pasta de uploads:**
-   ```bash
-   mkdir uploads
-   ```
-##Corrigindo erro pip install pydantic[email]
+- O sistema usa Supabase como banco de dados
+- Não é necessário configurar ou executar nenhum servidor backend local
+- Todas as operações de CRUD são feitas diretamente através do client do Supabase no frontend
 
+### Documentação do Supabase
 
-## Executando o Servidor
-
-## PARA EXECUTAR O COMANDO SEGUINTE PRECISA DAR ESSE PRIMEIRO nPM START
-
-
-
-O servidor estará disponível em: http://localhost:3001
+Para mais informações sobre a configuração do Supabase, consulte:
+- [Documentação Oficial do Supabase](https://supabase.com/docs)
+- [CLI do Supabase](https://supabase.com/docs/guides/cli)
+- [SDK do Supabase para JavaScript](https://supabase.com/docs/reference/javascript/)
 
 ## Documentação da API
 

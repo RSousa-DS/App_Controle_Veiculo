@@ -19,9 +19,9 @@ export default function ReservaGrade({ reservas = [] }) {
             {reservas && reservas.length > 0 ? (
               reservas.map((reserva) => (
                 <tr key={reserva.id}>
-                  <td>{reserva.veiculo}</td>
-                  <td>{new Date(reserva.dataRetirada).toLocaleString('pt-BR')}</td>
-                  <td>{new Date(reserva.dataDevolucaoPrevista).toLocaleString('pt-BR')}</td>
+                  <td>{reserva.veiculos?.modelo || '-'}</td>
+                  <td>{reserva.data_retirada ? new Date(reserva.data_retirada).toLocaleString('pt-BR') : '-'}</td>
+                  <td>{reserva.data_devolucao_prevista ? new Date(reserva.data_devolucao_prevista).toLocaleString('pt-BR') : '-'}</td>
                   <td>{reserva.responsavel}</td>
                   <td>{reserva.departamento}</td>
                 </tr>

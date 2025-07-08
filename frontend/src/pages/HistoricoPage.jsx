@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 export default function HistoricoPage() {
   const [reservas, setReservas] = useState([]);
@@ -19,8 +19,11 @@ export default function HistoricoPage() {
 
   const fetchReservas = async () => {
     try {
-      const response = await axios.get('/api/reservas/');
-      setReservas(response.data);
+      const { data, error } = await supabase
+        .from('reservas')
+        .select('*, veiculos:veiculo_id (id, modelo)')
+        .order('data_retirada', { ascending: false });
+      setReservas(error ? [] : (data || []));
     } catch (error) {
       setError('Erro ao buscar reservas.');
     }
@@ -29,7 +32,11 @@ export default function HistoricoPage() {
   useEffect(() => {
     fetchReservas();
     // Buscar veículos para o dropdown
-    axios.get('/api/veiculos/').then(res => setVeiculos(res.data)).catch(() => setVeiculos([]));
+    const fetchVeiculos = async () => {
+      const { data, error } = await supabase.from('veiculos').select('id, modelo');
+      setVeiculos(error ? [] : (data || []));
+    };
+    fetchVeiculos();
   }, []);
 
   const handleFiltroChange = (e) => {
@@ -38,16 +45,16 @@ export default function HistoricoPage() {
   };
 
   const reservasFiltradas = reservas.filter(r => {
-    const veiculoOk = !filtro.veiculo || r.veiculo === filtro.veiculo;
+    const veiculoOk = !filtro.veiculo || r.veiculo_id === filtro.veiculo;
     const responsavelOk = !filtro.responsavel || r.responsavel.toLowerCase().includes(filtro.responsavel.toLowerCase());
-    const statusAtual = r.data_devolucao ? 'Finalizada' : 'Pendente';
+    const statusAtual = r.data_devolucao ? 'finalizada' : 'pendente';
     const statusOk = !filtro.status || statusAtual === filtro.status;
     let dataOk = true;
     if (filtro.dataInicio) {
-      dataOk = new Date(r.dataRetirada) >= new Date(filtro.dataInicio.split('/').reverse().join('-'));
+      dataOk = new Date(r.data_retirada) >= new Date(filtro.dataInicio.split('/').reverse().join('-'));
     }
     if (dataOk && filtro.dataFim) {
-      dataOk = new Date(r.dataRetirada) <= new Date(filtro.dataFim.split('/').reverse().join('-'));
+      dataOk = new Date(r.data_retirada) <= new Date(filtro.dataFim.split('/').reverse().join('-'));
     }
     return veiculoOk && responsavelOk && statusOk && dataOk;
   });
@@ -83,7 +90,7 @@ export default function HistoricoPage() {
           <select className="form-control" name="veiculo" value={filtro.veiculo} onChange={handleFiltroChange}>
             <option value="">Todos os Veículos</option>
             {veiculos.map(v => (
-              <option key={v} value={v}>{v}</option>
+              <option key={v.id} value={v.id}>{v.modelo}</option>
             ))}
           </select>
         </div>

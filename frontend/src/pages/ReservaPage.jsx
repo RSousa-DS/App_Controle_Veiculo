@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import ReservaForm from '../components/ReservaForm';
 import ReservaGrade from '../components/ReservaGrade';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
 export default function ReservaPage() {
   const [reservas, setReservas] = useState([]);
 
   const fetchReservas = async () => {
     try {
-      const response = await axios.get('/api/reservas/');
-      const data = Array.isArray(response.data) ? response.data : [];
-      setReservas(data);
+      const { data, error } = await supabase
+        .from('reservas')
+        
+        .order('data_retirada', { ascending: false });
+      setReservas(error ? [] : (data || []));
     } catch (error) {
       setReservas([]);
     }

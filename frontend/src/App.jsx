@@ -10,39 +10,46 @@ import Button from '@mui/material/Button';
 import ReservaPage from './pages/ReservaPage';
 import DevolucaoPage from './pages/DevolucaoPage';
 import HistoricoPage from './pages/HistoricoPage';
+import VeiculosPage from './pages/VeiculosPage';
+import ListaUsuarios from './pages/usuarios/ListaUsuarios';
+import FormularioUsuario from './pages/usuarios/FormularioUsuario';
+import PrivateRoute from './components/PrivateRoute';
+import LoginPage from './pages/LoginPage';
+import { AuthProvider } from './contexts/AuthContext';
+import Navbar from './components/Navbar';
 
 const theme = createTheme();
+
 export default function App() {
   return (
     <Router>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div className="container-fluid">
-          <Link className="navbar-brand" to="/">Controle de Veículos</Link>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarNav">
-            <ul className="navbar-nav ms-auto">
-              <li className="nav-item">
-                <Link className="nav-link" to="/">Reserva</Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/devolucao">Devolução</Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/historico">Histórico</Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </nav>
-      <div className="container py-4">
+      <AuthProvider>
         <Routes>
-          <Route path="/" element={<ReservaPage />} />
-          <Route path="/devolucao" element={<DevolucaoPage />} />
-          <Route path="/historico" element={<HistoricoPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={<AppLayout />} />
         </Routes>
-      </div>
+      </AuthProvider>
     </Router>
   );
 }
+
+function AppLayout() {
+  // O Navbar aparece em todas as páginas protegidas (menos login)
+  return (
+    <>
+      <Navbar />
+      <div className="container py-4">
+        <Routes>
+          <Route path="/" element={<PrivateRoute><ReservaPage /></PrivateRoute>} />
+          <Route path="/devolucao" element={<PrivateRoute><DevolucaoPage /></PrivateRoute>} />
+          <Route path="/historico" element={<PrivateRoute><HistoricoPage /></PrivateRoute>} />
+          <Route path="/veiculos" element={<PrivateRoute><VeiculosPage /></PrivateRoute>} />
+          <Route path="/usuarios" element={<PrivateRoute adminOnly><ListaUsuarios /></PrivateRoute>} />
+          <Route path="/usuarios/novo" element={<PrivateRoute adminOnly><FormularioUsuario /></PrivateRoute>} />
+          <Route path="/usuarios/editar/:id" element={<PrivateRoute adminOnly><FormularioUsuario /></PrivateRoute>} />
+        </Routes>
+      </div>
+    </>
+  );
+}
+

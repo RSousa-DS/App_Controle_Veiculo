@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useContext } from 'react';
+import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ReservaForm({ onReservaCreated }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     veiculo: '',
     dataRetirada: '',
@@ -12,6 +14,17 @@ export default function ReservaForm({ onReservaCreated }) {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [veiculos, setVeiculos] = useState([]);
+
+  useEffect(() => {
+    // Buscar veículos do Supabase
+    const fetchVeiculos = async () => {
+      const { data, error } = await supabase.from('veiculos').select('id, modelo');
+      if (!error && data) setVeiculos(data);
+    };
+    fetchVeiculos();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,28 +35,83 @@ export default function ReservaForm({ onReservaCreated }) {
     e.preventDefault();
     setError('');
     setSuccess(false);
+    setIsSubmitting(true);
+    
+    // Verificação de permissão simplificada
+    // Se for uma edição, a permissão é verificada no componente que chama o formulário
+    
+    console.log('Iniciando submissão do formulário...');
+    console.log('Dados do formulário:', formData);
+    
     try {
-      // Converter datas para ISO antes de enviar para o backend
-      const dataRetirada = new Date(formData.dataRetirada).toISOString();
-      const dataDevolucaoPrevista = new Date(formData.dataDevolucaoPrevista).toISOString();
-      const response = await axios.post('/api/reservas/', {
-        ...formData,
-        dataRetirada,
-        dataDevolucaoPrevista
-      }); 
-      setSuccess(true);
-      setFormData({
-        veiculo: '',
-        dataRetirada: '',
-        dataDevolucaoPrevista: '',
-        responsavel: '',
-        email: '',
-        departamento: ''
-      });
-      if (onReservaCreated) onReservaCreated(response.data);
+      // Validação simples
+      if (!formData.veiculo || !formData.dataRetirada || !formData.dataDevolucaoPrevista || !formData.responsavel || !formData.email || !formData.departamento) {
+        setError('Preencha todos os campos obrigatórios.');
+        setIsSubmitting(false);
+        return;
+      }
+      // Converter datas para ISO
+      const data_retirada = new Date(formData.dataRetirada).toISOString();
+      const data_devolucao_prevista = new Date(formData.dataDevolucaoPrevista).toISOString();
+      if (!user) {
+        setError('Usuário não autenticado. Faça login novamente.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Usar o ID do usuário do contexto de autenticação
+      console.log('Usuário do contexto:', user);
+      
+      if (!user || !user.id) {
+        console.error('Usuário não autenticado ou ID inválido');
+        setError('Usuário não autenticado. Faça login novamente.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const reservaData = {
+        veiculo: formData.veiculo,
+        veiculo_id: parseInt(formData.veiculo),  // Adicionado veiculo_id convertendo para número
+        responsavel: formData.responsavel,
+        email: formData.email,
+        departamento: formData.departamento,
+        data_retirada,
+        data_devolucao_prevista,
+        status_devolucao: 'Pendente',
+        usuario_id: user.id
+      };
+      
+      console.log('Dados da reserva a serem enviados:', reservaData);
+      
+      console.log('Tentando inserir reserva:', reservaData);
+      
+      const { data, error: insertError } = await supabase
+        .from('reservas')
+        .insert([reservaData])
+        .select();
+        
+      console.log('Resposta da inserção:', { data, error: insertError });
+      if (insertError) {
+        console.error('Erro detalhado ao criar reserva:', insertError);
+        const errorMessage = insertError.message || 'Erro ao criar reserva. Verifique os dados e tente novamente.';
+        setError(errorMessage);
+      } else {
+        console.log('Reserva criada com sucesso!', data);
+        setSuccess(true);
+        setFormData({
+          veiculo: '',
+          dataRetirada: '',
+          dataDevolucaoPrevista: '',
+          responsavel: '',
+          email: '',
+          departamento: ''
+        });
+        if (onReservaCreated) onReservaCreated();
+      }
     } catch (err) {
-      setError('Erro ao criar reserva. Horário Indisponível!');
+      setError('Erro ao criar reserva.');
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -59,8 +127,9 @@ export default function ReservaForm({ onReservaCreated }) {
             onChange={handleChange}
           >
             <option value="">Selecione...</option>
-            <option value="T-Cross">T-Cross</option>
-            <option value="Polo VW">Polo VW</option>
+            {veiculos.map(v => (
+              <option key={v.id} value={v.id}>{v.modelo}</option>
+            ))}
           </select>
         </div>
         <div className="col-md-6">
@@ -123,8 +192,8 @@ export default function ReservaForm({ onReservaCreated }) {
       </div>
       {error && <div className="alert alert-danger mt-3">{error}</div>}
       {success && <div className="alert alert-success mt-3">Reserva criada com sucesso!</div>}
-      <button type="submit" className="btn btn-primary mt-3">
-        Criar Reserva
+      <button type="submit" className="btn btn-primary mt-3" disabled={isSubmitting}>
+        {isSubmitting ? 'Salvando...' : 'Criar Reserva'}
       </button>
     </form>
   );

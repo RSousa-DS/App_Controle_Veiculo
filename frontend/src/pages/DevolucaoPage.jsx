@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../supabaseClient';
 import styled, { keyframes, css } from 'styled-components';
 
 const messageFadeIn = keyframes`
@@ -522,33 +522,101 @@ const DevolucaoPage = () => {
   const fetchReservas = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/reservas/');
+      setError('');
       
-      if (response.data && Array.isArray(response.data)) {
-        // Garante que os dados estejam no formato correto
-        const reservasFormatadas = response.data.map(reserva => ({
-          ...reserva,
-          // Garante que os campos estejam presentes mesmo se forem nulos
-          data_devolucao_real: reserva.data_devolucao_real || null,
-          local_estacionado: reserva.local_estacionado || null,
-          km_devolvido: reserva.km_devolvido || null,
-          status_devolucao: reserva.statusDevolucao || 'Pendente',
-          // Garante que o veículo seja uma string formatada
-          veiculo: reserva.veiculo || (reserva.veiculo_rel 
-            ? `${reserva.veiculo_rel.marca} ${reserva.veiculo_rel.modelo} - ${reserva.veiculo_rel.placa}`
-            : 'Veículo não encontrado'
+      // Buscar reservas com os dados do veículo relacionado
+      const { data, error } = await supabase
+        .from('reservas')
+        .select(`
+          id,
+          veiculo_id,
+          responsavel,
+          data_retirada,
+          data_devolucao_prevista,
+          data_devolucao_real,
+          local_estacionado,
+          km_devolvido,
+          observacoes,
+          status_devolucao,
+          imagem_painel,
+          veiculos:veiculo_id (
+            id,
+            placa,
+            marca,
+            modelo,
+            quilometragem_atual,
+            status
           )
-        }));
+        `)
+        .order('data_retirada', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Formatar os dados para o frontend
+        const reservasFormatadas = data.map(reserva => {
+          // Formatar datas
+          const dataRetirada = reserva.data_retirada 
+            ? new Date(reserva.data_retirada).toLocaleString('pt-BR')
+            : 'Não informada';
+            
+          const dataDevolucaoPrevista = reserva.data_devolucao_prevista
+            ? new Date(reserva.data_devolucao_prevista).toLocaleString('pt-BR')
+            : 'Não informada';
+            
+          const dataDevolucaoReal = reserva.data_devolucao_real
+            ? new Date(reserva.data_devolucao_real).toLocaleString('pt-BR')
+            : null;
+            
+          // Verificar se a reserva está atrasada
+          const hoje = new Date();
+          const dataDevolucao = new Date(reserva.data_devolucao_prevista);
+          const atrasada = !reserva.data_devolucao_real && dataDevolucao < hoje;
+          
+          return {
+            ...reserva,
+            // Manter os dados do veículo em um objeto separado para referência fácil
+            veiculo_rel: reserva.veiculos || null,
+            // String formatada para exibição
+            veiculo: reserva.veiculos 
+              ? `${reserva.veiculos.marca || ''} ${reserva.veiculos.modelo || ''} - ${reserva.veiculos.placa || ''}`.trim()
+              : 'Veículo não encontrado',
+            // Formatar datas para exibição
+            data_retirada_formatada: dataRetirada,
+            data_devolucao_prevista_formatada: dataDevolucaoPrevista,
+            data_devolucao_real_formatada: dataDevolucaoReal,
+            // Status da reserva
+            status: atrasada ? 'atrasada' : (reserva.status_devolucao || 'pendente'),
+            // Outros campos formatados
+            km_devolvido: reserva.km_devolvido || null,
+            local_estacionado: reserva.local_estacionado || null,
+            observacoes: reserva.observacoes || null,
+            // Flag para controle de UI
+            atrasada
+          };
+        });
         
         setReservas(reservasFormatadas);
       } else {
-        console.error('Formato de dados inesperado:', response.data);
-        setError('Formato de dados inesperado ao carregar reservas.');
+        // Nenhuma reserva encontrada
+        setReservas([]);
       }
     } catch (error) {
       console.error('Erro ao buscar reservas:', error);
-      setError('Erro ao carregar reservas. Verifique sua conexão e tente novamente.');
-      setReservas([]); // Garante que o estado seja limpo em caso de erro
+      
+      // Mensagem de erro mais amigável
+      let errorMessage = 'Erro ao carregar as reservas. ';
+      
+      if (error.code === 'PGRST116') {
+        errorMessage += 'Tabela não encontrada. Verifique a configuração do banco de dados.';
+      } else if (error.message.includes('NetworkError')) {
+        errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
+      } else {
+        errorMessage += 'Tente novamente mais tarde.';
+      }
+      
+      setError(errorMessage);
+      setReservas([]);
     } finally {
       setLoading(false);
     }
@@ -560,19 +628,32 @@ const DevolucaoPage = () => {
 
   const handleOpenModal = (reserva) => {
     setSelectedReserva(reserva);
+    
+    // Preencher o formulário com valores iniciais
     setFormData({ 
-      kmDevolvido: '', 
-      localEstacionado: '', 
-      observacoes: '',
-      responsavel_devolucao: reserva.responsavel // Preenche com o responsável da reserva
+      kmDevolvido: reserva.veiculos?.quilometragem_atual || '', 
+      localEstacionado: reserva.local_estacionado || '', 
+      observacoes: reserva.observacoes || '',
+      responsavel_devolucao: reserva.responsavel || ''
     });
+    
+    // Se já houver uma imagem do painel, carregar a prévia
+    if (reserva.imagem_painel) {
+      setPainelPreview(reserva.imagem_painel);
+    } else {
+      setPainelPreview('');
+    }
+    
+    // Resetar estados do formulário
     setFormErrors({});
     setSubmitAttempted(false);
     setError(null);
     setSuccess(false);
     setPainelFile(null);
-    setPainelPreview('');
     setShowModal(true);
+    
+    // Rolar para o topo para garantir que o modal seja visível
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCloseModal = () => {
@@ -653,6 +734,56 @@ const DevolucaoPage = () => {
     return Object.keys(errors).length === 0;
   };
 
+  const handleFileUpload = async (file) => {
+    try {
+      // Validar o tipo do arquivo
+      const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+      if (!validTypes.includes(file.type)) {
+        throw new Error('Tipo de arquivo não suportado. Use JPG ou PNG.');
+      }
+      
+      // Validar o tamanho do arquivo (máx 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new Error('Arquivo muito grande. O tamanho máximo é 5MB.');
+      }
+      
+      // Gerar um nome único para o arquivo com data e ID aleatório
+      const fileExt = file.name.split('.').pop();
+      const timestamp = new Date().getTime();
+      const randomId = Math.random().toString(36).substring(2, 10);
+      const fileName = `painel_${timestamp}_${randomId}.${fileExt}`;
+      const filePath = `devolucoes/${new Date().getFullYear()}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${fileName}`;
+
+      // Fazer upload do arquivo
+      const { error: uploadError } = await supabase.storage
+        .from('veiculos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Erro no upload do arquivo:', uploadError);
+        throw new Error('Falha ao enviar o arquivo. Tente novamente.');
+      }
+
+      // Obter a URL pública do arquivo
+      const { data: { publicUrl } } = supabase.storage
+        .from('veiculos')
+        .getPublicUrl(filePath);
+
+      if (!publicUrl) {
+        throw new Error('Não foi possível obter a URL pública do arquivo.');
+      }
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
@@ -682,80 +813,96 @@ const DevolucaoPage = () => {
     setIsSubmitting(true);
     
     try {
-      // Criar FormData para enviar arquivos
-      const formDataToSend = new FormData();
-      
-      // Adiciona os campos ao FormData com os nomes corretos esperados pelo backend Node/Multer
-      formDataToSend.append('reservaId', selectedReserva.id);
-      formDataToSend.append('kmDevolvido', formData.kmDevolvido);
-      formDataToSend.append('localEstacionado', formData.localEstacionado.trim());
-      formDataToSend.append('responsavelDevolucao', formData.responsavel_devolucao?.trim() || '');
-      if (formData.observacoes?.trim()) {
-        formDataToSend.append('observacoes', formData.observacoes.trim());
+      // Fazer upload da imagem
+      let imageUrl = null;
+      try {
+        imageUrl = await handleFileUpload(painelFile);
+      } catch (uploadError) {
+        console.error('Erro no upload da imagem:', uploadError);
+        throw new Error('Falha ao enviar a imagem. Por favor, tente novamente.');
       }
-      formDataToSend.append('imagemPainel', painelFile);
       
-      // Mostrar feedback visual durante o envio
-      setSuccess('Enviando dados...');
+      // Atualizar a reserva no Supabase
+      const { data: updatedReserva, error: updateError } = await supabase
+        .from('reservas')
+        .update({
+          km_devolvido: formData.kmDevolvido,
+          local_estacionado: formData.localEstacionado.trim(),
+          observacoes: formData.observacoes.trim() || null,
+          status_devolucao: 'concluido',
+          data_devolucao_real: new Date().toISOString(),
+          imagem_painel: imageUrl
+        })
+        .eq('id', selectedReserva.id)
+        .select()
+        .single();
       
-      // Enviar para o endpoint correto do backend Node
-      const response = await axios.post('/api/devolucao', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Accept': 'application/json',
-        },
-        timeout: 30000, // 30 segundos de timeout
+      if (updateError) throw updateError;
+      
+      // Atualizar a quilometragem do veículo
+      if (formData.kmDevolvido && selectedReserva.veiculo_id) {
+        await supabase
+          .from('veiculos')
+          .update({ 
+            quilometragem_atual: formData.kmDevolvido,
+            status: 'Disponível'
+          })
+          .eq('id', selectedReserva.veiculo_id);
+      }
+      
+      setSuccess('Devolução registrada com sucesso!');
+      
+      // Limpar o formulário
+      setFormData({
+        kmDevolvido: '',
+        localEstacionado: '',
+        observacoes: '',
+        responsavel_devolucao: ''
       });
+      setPainelFile(null);
+      setPainelPreview('');
+      setFormErrors({});
       
-      if (response.data && response.data.ok) {
-        setSuccess('Devolução registrada com sucesso!');
-        
-        // Limpar o formulário
-        setFormData({
-          kmDevolvido: '',
-          localEstacionado: '',
-          observacoes: '',
-          responsavel_devolucao: ''
-        });
-        setPainelFile(null);
-        setPainelPreview('');
-        setFormErrors({});
-        
-        // Atualizar a lista de reservas após um pequeno atraso para o usuário ver a mensagem de sucesso
-        setTimeout(() => {
-          fetchReservas();
-          handleCloseModal();
-        }, 2000);
-      } else {
-        throw new Error(response.data?.message || 'Erro ao registrar a devolução');
-      }
+      // Atualizar a lista de reservas após um pequeno atraso para o usuário ver a mensagem de sucesso
+      setTimeout(() => {
+        fetchReservas();
+        handleCloseModal();
+      }, 2000);
     } catch (error) {
       console.error('Erro ao registrar devolução:', error);
       
-      // Tratamento de erros mais específico
+      // Tratamento de erros do Supabase
       let errorMessage = 'Erro ao processar a devolução. Tente novamente.';
       
-      if (error.response) {
-        // Erro da API (4xx, 5xx)
-        if (error.response.status === 422) {
-          // Erro de validação do Laravel
-          const validationErrors = error.response.data.errors || {};
-          const firstError = Object.values(validationErrors)[0]?.[0];
-          errorMessage = firstError || 'Dados inválidos. Verifique os campos do formulário.';
-        } else if (error.response.status === 404) {
-          errorMessage = 'Recurso não encontrado. Atualize a página e tente novamente.';
-        } else if (error.response.status >= 500) {
-          errorMessage = 'Erro no servidor. Tente novamente mais tarde.';
-        } else if (error.response.data?.message) {
-          errorMessage = error.response.data.message;
+      if (error.code) {
+        // Códigos de erro comuns do Supabase
+        switch (error.code) {
+          case '23505': // Violação de chave única
+            errorMessage = 'Já existe um registro com esses dados. Verifique as informações e tente novamente.';
+            break;
+          case '42501': // Permissão negada
+            errorMessage = 'Você não tem permissão para realizar esta ação.';
+            break;
+          case '42P01': // Tabela não encontrada
+            errorMessage = 'Erro no sistema. Tabela não encontrada.';
+            break;
+          case 'PGRST116': // Recurso não encontrado
+            errorMessage = 'Recurso não encontrado. Atualize a página e tente novamente.';
+            break;
+          default:
+            if (error.message) {
+              errorMessage = error.message;
+            }
         }
-      } else if (error.request) {
-        // Sem resposta do servidor
-        errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Tempo de conexão esgotado. Verifique sua conexão com a internet e tente novamente.';
       } else if (error.message) {
-        errorMessage = error.message;
+        // Mensagens de erro gerais
+        if (error.message.includes('JWT')) {
+          errorMessage = 'Sessão expirada. Por favor, faça login novamente.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
+        } else {
+          errorMessage = error.message;
+        }
       }
       
       setError(errorMessage);
@@ -839,59 +986,115 @@ const DevolucaoPage = () => {
               ) : (
                 reservas.map((reserva) => (
                   <tr key={reserva.id}>
-                    <td data-label="Veículo">{reserva.veiculo}</td>
-                    <td data-label="Responsável">{reserva.responsavel}</td>
-                    <td data-label="DataRetirada">
-                      {new Date(reserva.dataRetirada).toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                    <td data-label="Veículo">
+                      <div style={{ fontWeight: 500 }}>{reserva.veiculo}</div>
+                      {reserva.veiculos?.placa && (
+                        <div style={{ fontSize: '0.8rem', color: colors.textSecondary }}>
+                          Placa: {reserva.veiculos.placa}
+                        </div>
+                      )}
+                    </td>
+                    <td data-label="Responsável">
+                      <div style={{ fontWeight: 500 }}>{reserva.responsavel || 'Não informado'}</div>
+                    </td>
+                    <td data-label="Data Retirada">
+                      {reserva.data_retirada_formatada}
                     </td>
                     <td data-label="Data Devolução">
-                      {reserva.data_devolucao_real ? new Date(reserva.data_devolucao_real).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : '-'}
+                      {reserva.data_devolucao_real_formatada || (
+                        <div style={{ color: reserva.atrasada ? colors.danger : colors.text }}>
+                          {reserva.data_devolucao_prevista_formatada}
+                          {reserva.atrasada && (
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              color: colors.danger,
+                              fontWeight: 500,
+                              marginTop: '4px'
+                            }}>
+                              Atrasada
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td data-label="Local Estacionado">
-                      {reserva.local_estacionado || '-'}
+                      {reserva.local_estacionado || (
+                        <span style={{ color: colors.textSecondary, fontStyle: 'italic' }}>Pendente</span>
+                      )}
                     </td>
                     <td data-label="Km Devolvido">
-                      {reserva.km_devolvido || '-'}
+                      {reserva.km_devolvido ? (
+                        <>
+                          {reserva.km_devolvido.toLocaleString('pt-BR')} km
+                          {reserva.veiculos?.quilometragem_atual && (
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              color: colors.textSecondary,
+                              marginTop: '2px'
+                            }}>
+                              Anterior: {reserva.veiculos.quilometragem_atual.toLocaleString('pt-BR')} km
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: colors.textSecondary, fontStyle: 'italic' }}>Pendente</span>
+                      )}
                     </td>
                     <td data-label="Status">
-                      <StatusBadge $status={reserva.statusDevolucao || 'Pendente'}>
-                        {reserva.statusDevolucao || 'Pendente'}
+                      <StatusBadge $status={reserva.status || 'Pendente'}>
+                        {reserva.status || 'Pendente'}
                       </StatusBadge>
+                      {reserva.atrasada && reserva.status !== 'Devolvido' && (
+                        <div style={{ 
+                          fontSize: '0.7rem', 
+                          color: colors.danger,
+                          fontWeight: 500,
+                          marginTop: '4px',
+                          textAlign: 'center'
+                        }}>
+                          Atrasada
+                        </div>
+                      )}
                     </td>
                     <td data-label="Ações">
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+                        {/* Botão Ver - Visível apenas para reservas concluídas */}
                         <ActionButton
                           $variant="primary"
                           onClick={() => handleViewModal(reserva)}
                           style={{ 
                             minWidth: 'auto', 
-                            opacity: reserva.status_devolucao === 'Devolvido' ? 1 : 0.5, 
-                            pointerEvents: reserva.status_devolucao === 'Devolvido' ? 'auto' : 'none' 
+                            opacity: reserva.status === 'CONCLUIDO' ? 1 : 0.5, 
+                            pointerEvents: reserva.status === 'CONCLUIDO' ? 'auto' : 'none' 
                           }}
-                          title={reserva.status_devolucao === 'Devolvido' ? 'Ver detalhes' : 'Apenas reservas devolvidas podem ser visualizadas'}
+                          title={reserva.status === 'CONCLUIDO' ? 'Ver detalhes' : 'Apenas reservas concluídas podem ser visualizadas'}
                         >
                           <FaInfoCircle /> Ver
                         </ActionButton>
-                        {reserva.status_devolucao !== 'Devolvido' && (
+                        
+                        {/* Botão Devolver - Visível apenas para reservas pendentes ou atrasadas */}
+                        {(reserva.status === 'PENDENTE' || reserva.atrasada) && (
                           <ActionButton
-                            $variant="primary"
+                            $variant="success"
                             onClick={() => handleOpenModal(reserva)}
-                            style={{ background: colors.secondary, minWidth: 'auto' }}
+                            style={{ minWidth: 'auto' }}
+                            title="Registrar devolução"
                           >
-                            <FaCheckCircle /> Devolver
+                            <FaCheck /> Devolver
                           </ActionButton>
+                        )}
+                        
+                        {/* Indicador visual para reservas em andamento */}
+                        {reserva.status === 'EM_ANDAMENTO' && (
+                          <span style={{ 
+                            fontSize: '0.8rem', 
+                            color: colors.textSecondary,
+                            padding: '6px 12px',
+                            borderRadius: '4px',
+                            backgroundColor: colors.gray50
+                          }}>
+                            Em andamento
+                          </span>
                         )}
                       </div>
                     </td>
@@ -970,7 +1173,7 @@ const DevolucaoPage = () => {
                 </div>
               </DetailCard>
               
-              {viewReserva.status_devolucao === 'Devolvido' && (
+              {viewReserva.status_devolucao === 'concluido' && (
                 <>
                   <DetailCard>
                     <FaCalendarAlt style={{ color: colors.primary, fontSize: '1.2rem' }} />
@@ -1039,7 +1242,7 @@ const DevolucaoPage = () => {
                   Foto do Painel:
                 </div>
                 <img 
-                  src={`http://localhost:3001${viewReserva.imagemPainel}`} 
+                  src={`${viewReserva.imagem_painel}?width=800&height=600`} 
                   alt="Painel do veículo" 
                   style={{
                     maxWidth: '100%',
