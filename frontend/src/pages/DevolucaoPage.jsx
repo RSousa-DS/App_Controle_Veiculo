@@ -829,7 +829,7 @@ const DevolucaoPage = () => {
           km_devolvido: formData.kmDevolvido,
           local_estacionado: formData.localEstacionado.trim(),
           observacoes: formData.observacoes.trim() || null,
-          status_devolucao: 'concluido',
+          status_devolucao: 'Concluído',
           data_devolucao_real: new Date().toISOString(),
           imagem_painel: imageUrl
         })
@@ -1141,15 +1141,7 @@ const DevolucaoPage = () => {
                 <FaCalendarAlt style={{ color: colors.primary, fontSize: '1.2rem' }} />
                 <div>
                   <div style={{ fontSize: '0.8rem', color: colors.textSecondary, marginBottom: '2px' }}>Retirada</div>
-                  <div style={{ fontWeight: 500 }}>
-                    {new Date(viewReserva.dataRetirada).toLocaleString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
+                  <div style={{ fontWeight: 500 }}>{viewReserva.data_retirada && !isNaN(Date.parse(viewReserva.data_retirada)) ? new Date(viewReserva.data_retirada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Não informada'}</div>
                 </div>
               </DetailCard>
               
@@ -1157,29 +1149,19 @@ const DevolucaoPage = () => {
                 <FaCalendarCheck style={{ color: colors.primary, fontSize: '1.2rem' }} />
                 <div>
                   <div style={{ fontSize: '0.8rem', color: colors.textSecondary, marginBottom: '2px' }}>Devolução Prevista</div>
-                  <div style={{ fontWeight: 500 }}>
-                    {viewReserva.dataDevolucaoPrevista 
-                      ? new Date(viewReserva.dataDevolucaoPrevista).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
-                      : 'Não informada'}
-                  </div>
+                  <div style={{ fontWeight: 500 }}>{viewReserva.data_devolucao_prevista && !isNaN(Date.parse(viewReserva.data_devolucao_prevista)) ? new Date(viewReserva.data_devolucao_prevista).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Não informada'}</div>
                 </div>
               </DetailCard>
               
-              {viewReserva.status_devolucao === 'concluido' && (
+              {(viewReserva.status_devolucao === 'Concluído' || viewReserva.status_devolucao === 'concluido') && (
                 <>
                   <DetailCard>
                     <FaCalendarAlt style={{ color: colors.primary, fontSize: '1.2rem' }} />
                     <div>
                       <div style={{ fontSize: '0.8rem', color: colors.textSecondary, marginBottom: '2px' }}>Devolução Realizada</div>
                       <div style={{ fontWeight: 500 }}>
-                        {viewReserva.dataDevolucaoReal 
-                          ? new Date(viewReserva.dataDevolucaoReal).toLocaleString('pt-BR', {
+                        {viewReserva.data_devolucao_real && !isNaN(Date.parse(viewReserva.data_devolucao_real))
+                          ? new Date(viewReserva.data_devolucao_real).toLocaleString('pt-BR', {
                               day: '2-digit',
                               month: '2-digit',
                               year: 'numeric',
@@ -1195,7 +1177,7 @@ const DevolucaoPage = () => {
                     <FaMapMarkerAlt style={{ color: colors.primary, fontSize: '1.2rem' }} />
                     <div>
                       <div style={{ fontSize: '0.8rem', color: colors.textSecondary, marginBottom: '2px' }}>Local Estacionado</div>
-                      <div style={{ fontWeight: 500 }}>{viewReserva.localEstacionado || 'Não informado'}</div>
+                      <div style={{ fontWeight: 500 }}>{viewReserva.local_estacionado || 'Não informado'}</div>
                     </div>
                   </DetailCard>
                   
@@ -1229,7 +1211,7 @@ const DevolucaoPage = () => {
               </div>
             )}
             
-            {viewReserva.imagemPainel && (
+            {viewReserva.imagem_painel && (
               <div style={{ marginTop: '24px' }}>
                 <div style={{ 
                   fontSize: '0.95rem', 
@@ -1240,7 +1222,7 @@ const DevolucaoPage = () => {
                   Foto do Painel:
                 </div>
                 <img 
-                  src={`${viewReserva.imagem_painel}?width=800&height=600`} 
+                  src={viewReserva.imagem_painel} 
                   alt="Painel do veículo" 
                   style={{
                     maxWidth: '100%',
