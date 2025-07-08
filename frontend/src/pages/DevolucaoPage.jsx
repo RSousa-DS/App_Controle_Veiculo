@@ -57,7 +57,7 @@ const ErrorList = styled.ul`
     }
   }
 `;
-import { FaCar, FaCalendarAlt, FaUser, FaCheckCircle, FaInfoCircle, FaMapMarkerAlt, FaCamera, FaClipboardList, FaSyncAlt, FaTachometerAlt } from 'react-icons/fa';
+import { FaCar, FaCalendarAlt, FaUser, FaCheckCircle, FaInfoCircle, FaMapMarkerAlt, FaCamera, FaClipboardList, FaSyncAlt, FaTachometerAlt, FaCheck } from 'react-icons/fa';
 import { FaCalendarCheck } from 'react-icons/fa6';
 
 // Cores baseadas no layout do menu
@@ -1058,29 +1058,27 @@ const DevolucaoPage = () => {
                     </td>
                     <td data-label="Ações">
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
-                        {/* Botão Ver - Visível apenas para reservas concluídas */}
-                        <ActionButton
-                          $variant="primary"
-                          onClick={() => handleViewModal(reserva)}
-                          style={{ 
-                            minWidth: 'auto', 
-                            opacity: reserva.status === 'CONCLUIDO' ? 1 : 0.5, 
-                            pointerEvents: reserva.status === 'CONCLUIDO' ? 'auto' : 'none' 
-                          }}
-                          title={reserva.status === 'CONCLUIDO' ? 'Ver detalhes' : 'Apenas reservas concluídas podem ser visualizadas'}
-                        >
-                          <FaInfoCircle /> Ver
-                        </ActionButton>
+                        {/* Botão Ver - Visível apenas para reservas que NÃO estão pendentes */}
+                        {reserva.status !== 'Pendente' && (
+                          <ActionButton
+                            $variant="primary"
+                            onClick={() => handleViewModal(reserva)}
+                            style={{ minWidth: 'auto' }}
+                            title="Ver detalhes"
+                          >
+                            <FaInfoCircle /> Ver
+                          </ActionButton>
+                        )}
                         
-                        {/* Botão Devolver - Visível apenas para reservas pendentes ou atrasadas */}
-                        {(reserva.status === 'PENDENTE' || reserva.atrasada) && (
+                        {/* Botão Devolução - Visível apenas para veículos com status Pendente */}
+                        {reserva.status === 'Pendente' && (
                           <ActionButton
                             $variant="success"
                             onClick={() => handleOpenModal(reserva)}
                             style={{ minWidth: 'auto' }}
                             title="Registrar devolução"
                           >
-                            <FaCheck /> Devolver
+                            <FaCheck /> Devolução
                           </ActionButton>
                         )}
                         
