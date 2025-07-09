@@ -3,6 +3,7 @@ import axios from 'axios';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import styled, { keyframes } from 'styled-components';
+import * as XLSX from 'xlsx';
 import { 
   FaCar, 
   FaUser, 
@@ -16,7 +17,8 @@ import {
   FaTimesCircle,
   FaClock,
   FaHistory,
-  FaUserShield
+  FaUserShield,
+  FaFileExcel
 } from 'react-icons/fa';
 
 // Cores baseadas no layout do menu
@@ -404,7 +406,7 @@ export default function HistoricoPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   
   const [filtro, setFiltro] = useState({
     veiculo: '',
@@ -415,6 +417,78 @@ export default function HistoricoPage() {
   });
   
   const [veiculos, setVeiculos] = useState([]);
+  
+  // Função para formatar datas
+  const formatarData = (dataString, paraExportacao = false) => {
+    if (!dataString) return '-';
+    const data = new Date(dataString);
+    
+    if (paraExportacao) {
+      return data.toLocaleString('pt-BR');
+    }
+    
+    return data.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
+  // Função para exportar dados para XLSX
+  const exportToExcel = () => {
+    try {
+      // Preparar os dados para exportação
+      const dataToExport = reservasFiltradas.map(reserva => ({
+        'ID': reserva.id,
+        'Veículo': reserva.veiculos?.modelo || 'N/A',
+        'Placa': reserva.veiculos?.placa || 'N/A',
+        'Responsável': reserva.nome_responsavel || 'N/A',
+        'Data Retirada': formatarData(reserva.data_retirada, true),
+        'Data Devolução': reserva.data_devolucao_prevista ? formatarData(reserva.data_devolucao_prevista, true) : 'Pendente',
+        'Status': reserva.status_devolucao || 'Pendente',
+        'Km Inicial': reserva.km_inicial || 'N/A',
+        'Km Final': reserva.km_final || 'N/A',
+        'Motivo': reserva.motivo || 'N/A',
+        'Observações': reserva.observacoes || 'N/A'
+      }));
+
+      // Criar planilha
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      
+      // Ajustar largura das colunas
+      const wscols = [
+        {wch: 8},  // ID
+        {wch: 20}, // Veículo
+        {wch: 12}, // Placa
+        {wch: 25}, // Responsável
+        {wch: 20}, // Data Retirada
+        {wch: 20}, // Data Devolução
+        {wch: 15}, // Status
+        {wch: 10}, // Km Inicial
+        {wch: 10}, // Km Final
+        {wch: 25}, // Motivo
+        {wch: 40}  // Observações
+      ];
+      ws['!cols'] = wscols;
+      
+      // Criar livro de trabalho
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Histórico de Reservas');
+      
+      // Gerar arquivo
+      const fileName = `historico_reservas_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      setSuccess('Exportação concluída com sucesso!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Erro ao exportar para Excel:', error);
+      setError('Erro ao exportar para Excel. Tente novamente.');
+      setTimeout(() => setError(''), 5000);
+    }
+  };
 
   const fetchReservas = async () => {
     try {
@@ -465,17 +539,7 @@ export default function HistoricoPage() {
     setFiltro(prev => ({ ...prev, [name]: value }));
   };
 
-  const formatarData = (dataString) => {
-    if (!dataString) return '-';
-    const data = new Date(dataString);
-    return data.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+
 
   const reservasFiltradas = reservas
     .map(reserva => ({
@@ -512,6 +576,8 @@ export default function HistoricoPage() {
     });
   };
 
+
+
   const handleDeleteClick = (reserva) => {
     if (!isAdmin) {
       setError('Apenas administradores podem excluir reservas.');
@@ -520,7 +586,7 @@ export default function HistoricoPage() {
     // Adiciona o email do usuário logado ao objeto da reserva para verificação
     const reservaComEmail = {
       ...reserva,
-      email: user?.email // Adiciona o email do usuário logado
+      email: '' // Adiciona o email do usuário logado
     };
     setReservaParaExcluir(reservaComEmail);
     setSenha('');
@@ -596,28 +662,6 @@ export default function HistoricoPage() {
       // Limpa a senha do estado após o uso
       setSenha('');
     }
-  };
-
-  // Cores baseadas no layout do menu
-  const colors = {
-    primary: '#1a73e8',
-    primaryLight: '#e8f0fe',
-    secondary: '#34a853',
-    background: '#f8f9fa',
-    white: '#ffffff',
-    text: '#202124',
-    textSecondary: '#5f6368',
-    border: '#dadce0',
-    success: '#34a853',
-    warning: '#f9ab00',
-    error: '#d93025',
-    danger: '#dc3545',
-    gray50: '#f8f9fa',
-    gray100: '#f8f9fa',
-    gray200: '#e9ecef',
-    gray300: '#dee2e6',
-    gray400: '#ced4da',
-    gray500: '#adb5bd'
   };
 
   const StyledTable = styled.table`
@@ -737,12 +781,34 @@ export default function HistoricoPage() {
   return (
     <Container>
       <Banner>
-        <BannerIcon>
-          <FaHistory />
-        </BannerIcon>
-        <BannerTitle>Histórico de Reservas</BannerTitle>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+          <BannerIcon>
+            <FaHistory />
+          </BannerIcon>
+          <BannerTitle>Histórico de Reservas</BannerTitle>
+        </div>
+        <Button 
+          onClick={exportToExcel}
+          style={{
+            backgroundColor: colors.success,
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s',
+            '&:hover': {
+              backgroundColor: '#2e7d32'
+            }
+          }}
+        >
+          <FaFileExcel />
+          Exportar para Excel
+        </Button>
       </Banner>
-      
       <Section>
         <SectionHeader>
           <FaFilter />
