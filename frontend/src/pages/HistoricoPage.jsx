@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import styled, { keyframes } from 'styled-components';
 import { 
   FaCar, 
@@ -14,7 +15,8 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
-  FaHistory
+  FaHistory,
+  FaUserShield
 } from 'react-icons/fa';
 
 // Cores baseadas no layout do menu
@@ -402,6 +404,7 @@ export default function HistoricoPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const { isAdmin, user } = useAuth();
   
   const [filtro, setFiltro] = useState({
     veiculo: '',
@@ -510,7 +513,16 @@ export default function HistoricoPage() {
   };
 
   const handleDeleteClick = (reserva) => {
-    setReservaParaExcluir(reserva);
+    if (!isAdmin) {
+      setError('Apenas administradores podem excluir reservas.');
+      return;
+    }
+    // Adiciona o email do usuário logado ao objeto da reserva para verificação
+    const reservaComEmail = {
+      ...reserva,
+      email: user?.email // Adiciona o email do usuário logado
+    };
+    setReservaParaExcluir(reservaComEmail);
     setSenha('');
     setError('');
     setSuccess('');
@@ -518,24 +530,71 @@ export default function HistoricoPage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (senha !== '12345') {
-      setError('Senha incorreta.');
+    if (!isAdmin) {
+      setError('Apenas administradores podem excluir reservas.');
       return;
     }
+
+    if (!senha) {
+      setError('Por favor, insira sua senha de administrador.');
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      // Obtém o usuário atual para verificar se é admin
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) throw userError;
+      if (!currentUser) {
+        setError('Usuário não autenticado. Por favor, faça login novamente.');
+        return;
+      }
+
+      // Verifica se o usuário é administrador
+      const { data: userData, error: userDataError } = await supabase
+        .from('usuarios')
+        .select('is_admin')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (userDataError) throw userDataError;
+      if (!userData?.is_admin) {
+        setError('Apenas administradores podem excluir reservas.');
+        return;
+      }
+
+      // Verifica a senha do administrador
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: senha
+      });
+
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Senha incorreta. Tente novamente.');
+        } else {
+          throw signInError;
+        }
+        return;
+      }
+
+      // Se chegou até aqui, pode deletar a reserva
+      const { error: deleteError } = await supabase
         .from('reservas')
         .delete()
         .eq('id', reservaParaExcluir.id);
       
-      if (error) throw error;
+      if (deleteError) throw deleteError;
       
       setSuccess('Reserva excluída com sucesso.');
       setShowModal(false);
       fetchReservas();
     } catch (err) {
       console.error('Erro ao excluir reserva:', err);
-      setError('Erro ao excluir reserva. Verifique o console para mais detalhes.');
+      setError('Erro ao processar a exclusão. Tente novamente mais tarde.');
+    } finally {
+      // Limpa a senha do estado após o uso
+      setSenha('');
     }
   };
 
@@ -874,25 +933,47 @@ export default function HistoricoPage() {
                       <td data-label="Ações">
                         <div style={{ display: 'flex', gap: '8px' }}>
                           {(reserva.status_devolucao?.toLowerCase() !== 'concluido' && reserva.status_devolucao !== 'Concluído') && (
-                            <button 
-                              onClick={() => handleDeleteClick(reserva)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: colors.danger,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseOver={(e) => e.target.style.backgroundColor = colors.gray200}
-                              onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                            >
-                              <FaTrash /> Excluir
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {isAdmin && (
+                                <button 
+                                  onClick={() => handleDeleteClick(reserva)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: colors.danger,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.target.style.backgroundColor = colors.gray200}
+                                  onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                                  title="Excluir reserva (apenas administradores)"
+                                >
+                                  <FaTrash /> Excluir
+                                </button>
+                              )}
+                              {!isAdmin && (
+                                <span 
+                                  style={{
+                                    color: colors.textSecondary,
+                                    fontSize: '0.8rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    cursor: 'not-allowed',
+                                    opacity: 0.7
+                                  }}
+                                  title="Apenas administradores podem excluir reservas"
+                                >
+                                  <FaUserShield /> Acesso restrito
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -913,12 +994,16 @@ export default function HistoricoPage() {
             <p>Tem certeza que deseja excluir esta reserva? Esta ação não pode ser desfeita.</p>
             
             <div style={{ margin: '20px 0' }}>
-              <FilterLabel>Senha de Administrador</FilterLabel>
+              <FilterLabel>Confirmação de Administrador</FilterLabel>
+              <p style={{ fontSize: '0.9rem', color: colors.textSecondary, marginBottom: '10px' }}>
+                <FaUserShield style={{ marginRight: '8px' }} />
+                Esta ação requer privilégios de administrador. Por favor, confirme sua senha para continuar.
+              </p>
               <FilterInput 
                 type="password" 
                 value={senha} 
                 onChange={(e) => setSenha(e.target.value)} 
-                placeholder="Digite a senha"
+                placeholder="Digite sua senha de administrador"
               />
               {error && (
                 <ErrorMessage style={{ marginTop: '10px' }}>
