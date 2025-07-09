@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { supabase } from '../../supabaseClient';
 import { toast } from 'react-toastify';
 import styled from 'styled-components';
 import { 
@@ -231,18 +231,36 @@ const ListaUsuarios = () => {
   const carregarUsuarios = async (pagina = 1, termoBusca = '') => {
     try {
       setLoading(true);
-      const response = await api.get('/api/usuarios', {
-        params: {
-          pagina,
-          limite: LIMITE_POR_PAGINA,
-          busca: termoBusca
-        }
-      });
       
-      setUsuarios(response.data.usuarios);
-      setTotalItens(response.data.total);
-      setTotalPaginas(response.data.totalPaginas);
-      setPaginaAtual(response.data.paginaAtual);
+      // Calcula o offset baseado na página atual
+      const offset = (pagina - 1) * LIMITE_POR_PAGINA;
+      
+      // Cria a query base
+      let query = supabase
+        .from('usuarios')
+        .select('*', { count: 'exact' });
+      
+      // Adiciona filtro de busca se houver termo
+      if (termoBusca) {
+        query = query.or(
+          `nome.ilike.%${termoBusca}%,email.ilike.%${termoBusca}%,departamento.ilike.%${termoBusca}%`
+        );
+      }
+      
+      // Adiciona paginação
+      query = query.range(offset, offset + LIMITE_POR_PAGINA - 1);
+      
+      // Executa a consulta
+      const { data, error, count } = await query;
+      
+      if (error) throw error;
+      
+      // Atualiza os estados
+      setUsuarios(data || []);
+      setTotalItens(count || 0);
+      setTotalPaginas(Math.ceil((count || 0) / LIMITE_POR_PAGINA));
+      setPaginaAtual(pagina);
+      
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
       toast.error('Erro ao carregar usuários. Tente novamente.');
@@ -263,19 +281,22 @@ const ListaUsuarios = () => {
     }
     
     try {
-      if (statusAtual === 'ativo') {
-        await api.put(`/api/usuarios/${id}/inativar`);
-        toast.success('Usuário inativado com sucesso!');
-      } else {
-        await api.put(`/api/usuarios/${id}/ativar`);
-        toast.success('Usuário ativado com sucesso!');
-      }
+      const novoStatus = statusAtual === 'ativo' ? 'inativo' : 'ativo';
+      
+      const { error } = await supabase
+        .from('usuarios')
+        .update({ status: novoStatus })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast.success(`Usuário ${novoStatus === 'ativo' ? 'ativado' : 'inativado'} com sucesso!`);
       
       // Recarrega a lista de usuários
       carregarUsuarios(paginaAtual, busca);
     } catch (error) {
       console.error('Erro ao atualizar status do usuário:', error);
-      toast.error(error.response?.data?.message || 'Erro ao atualizar status do usuário.');
+      toast.error(error.message || 'Erro ao atualizar status do usuário.');
     }
   };
 

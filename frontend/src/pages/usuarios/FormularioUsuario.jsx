@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { supabase } from '../../supabaseClient';
 import { toast } from 'react-toastify';
 import styled from 'styled-components';
 import { FaArrowLeft, FaSave, FaSpinner, FaLock, FaUser, FaBuilding, FaUserShield } from 'react-icons/fa';
@@ -225,20 +225,27 @@ export default function FormularioUsuario() {
   useEffect(() => {
     if (isEditing) {
       setLoading(true);
-      api.get(`/api/usuarios/${id}`)
-        .then(res => {
+      supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          
           setUsuario({
-            nome: res.data.nome,
-            email: res.data.email,
-            departamento: res.data.departamento || '',
-            perfil: res.data.perfil,
-            status: res.data.status,
+            nome: data.nome,
+            email: data.email,
+            departamento: data.departamento || '',
+            perfil: data.perfil,
+            status: data.status,
             senha: '',
             confirmarSenha: ''
           });
-          setUsuarioAtual(res.data);
+          setUsuarioAtual(data);
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error('Erro ao carregar usuário:', error);
           toast.error('Erro ao carregar usuário.');
           navigate('/usuarios');
         })
@@ -271,25 +278,73 @@ export default function FormularioUsuario() {
     if (!validar()) return;
     setSaving(true);
     try {
-      const dados = {
+      const userData = {
         nome: usuario.nome.trim(),
         email: usuario.email.trim().toLowerCase(),
         departamento: usuario.departamento.trim() || null,
         perfil: usuario.perfil,
         status: usuario.status
       };
-      if (usuario.senha) dados.senha = usuario.senha;
+
       if (isEditing) {
-        await api.put(`/usuarios/${id}`, dados);
+        // Atualizar usuário existente
+        const { data, error } = await supabase
+          .from('usuarios')
+          .update(userData)
+          .eq('id', id);
+          
+        if (error) throw error;
+        
+        // Se houver senha para atualizar
+        if (usuario.senha) {
+          const { error: authError } = await supabase.auth.updateUser({
+            password: usuario.senha
+          });
+          if (authError) throw authError;
+        }
+        
         toast.success('Usuário atualizado com sucesso!');
       } else {
-        await api.post('/usuarios', dados);
+        // Criar novo usuário
+        const { data, error } = await supabase.auth.signUp({
+          email: userData.email,
+          password: usuario.senha,
+          options: {
+            data: {
+              nome: userData.nome,
+              perfil: userData.perfil,
+              status: userData.status
+            }
+          }
+        });
+        
+        if (error) throw error;
+        
+        // Adicionar dados adicionais na tabela de perfis
+        // O ID será gerado automaticamente pelo banco de dados
+        const { error: profileError } = await supabase
+          .from('usuarios')
+          .insert([{
+            nome: userData.nome,
+            email: userData.email,
+            departamento: userData.departamento,
+            perfil: userData.perfil,
+            status: userData.status,
+            senha: usuario.senha
+          }]);
+          
+        if (profileError) {
+          console.error('Erro ao criar perfil do usuário:', profileError);
+          throw new Error('Erro ao criar perfil do usuário');
+        }
+        
         toast.success('Usuário criado com sucesso!');
       }
+      
       navigate('/usuarios');
     } catch (error) {
-      if (error.response?.data?.errors) setErrors(error.response.data.errors);
-      else toast.error(error.response?.data?.message || 'Erro ao salvar usuário.');
+      console.error('Erro ao salvar usuário:', error);
+      toast.error(error.message || 'Erro ao salvar usuário.');
     } finally {
       setSaving(false);
     }

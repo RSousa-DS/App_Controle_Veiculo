@@ -443,6 +443,7 @@ export default function HistoricoPage() {
         const { data, error } = await supabase
           .from('veiculos')
           .select('id, modelo, placa')
+          .eq('ativo', true)
           .order('modelo', { ascending: true });
         
         if (error) throw error;

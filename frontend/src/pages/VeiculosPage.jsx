@@ -13,7 +13,10 @@ import {
   FaTachometerAlt,
   FaMapMarkerAlt,
   FaBuilding,
-  FaInfoCircle
+  FaInfoCircle,
+  FaTrash,
+  FaCheck,
+  FaBan
 } from 'react-icons/fa';
 
 // Design system colors
@@ -36,6 +39,59 @@ const colors = {
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+`;
+
+// --- Styled-components para a tabela de veículos ---
+const StyledTableContainer = styled.div`
+  padding: 0 24px 24px 24px;
+  margin-top: 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.08);
+  overflow-x: auto;
+`;
+
+const StyledTable = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1rem;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.06);
+
+  thead tr {
+    background: ${colors.primary};
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+
+  th, td {
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e3eafc;
+    vertical-align: middle;
+  }
+
+  th:first-child {
+    border-top-left-radius: 8px;
+  }
+  th:last-child {
+    border-top-right-radius: 8px;
+  }
+
+  tbody tr {
+    transition: background 0.18s;
+  }
+  tbody tr:hover {
+    background: #f6faff;
+  }
+  tbody tr.inativo {
+    opacity: 0.65;
+    background: #f9f9f9;
+  }
 `;
 
 const Banner = styled.div`
@@ -221,13 +277,17 @@ const EmptyState = styled.div`
     font-size: 1.1rem;
   }
 `;
+
 const StatusBadge = styled.span`
-  background: ${colors.successLight};
-  color: ${colors.success};
+  background: ${props => props.$active ? colors.successLight : colors.warningLight};
+  color: ${props => props.$active ? colors.success : colors.warning};
   padding: 3px 10px;
   border-radius: 16px;
   font-size: 0.9rem;
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 `;
 const Message = styled.div`
   margin: 10px 0 0 0;
@@ -246,10 +306,53 @@ const Message = styled.div`
   `}
 `;
 
+const ActionButton = styled.button`
+  background: none;
+  border: none;
+  color: ${colors.primary};
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${colors.primary}15;
+  }
+  
+  &.delete {
+    color: ${colors.danger};
+    &:hover {
+      background: ${colors.danger}15;
+    }
+  }
+  
+  &.activate {
+    color: ${colors.success};
+    &:hover {
+      background: ${colors.success}15;
+    }
+  }
+`;
+
 export default function VeiculosPage() {
   const [veiculos, setVeiculos] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ modelo: '', placa: '', km_inicial: '', km_locada: '', cidade: '', locadora: '', observacoes: '' });
+  const [form, setForm] = useState({ 
+    id: null,
+    modelo: '', 
+    placa: '', 
+    km_inicial: '', 
+    km_locada: '', 
+    cidade: '', 
+    locadora: '', 
+    observacoes: '',
+    ativo: true
+  });
+  const [editing, setEditing] = useState(false);
   const { user } = useAuth();
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -258,11 +361,17 @@ export default function VeiculosPage() {
   // Fetch vehicles from Supabase
   const fetchVeiculos = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('veiculos').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('veiculos')
+      .select('*')
+      .order('ativo', { ascending: false })
+      .order('created_at', { ascending: false });
+      
     if (error) {
+      console.error('Erro ao buscar veículos:', error);
       setVeiculos([]);
     } else {
-      setVeiculos(data);
+      setVeiculos(data || []);
     }
     setLoading(false);
   };
@@ -287,6 +396,59 @@ export default function VeiculosPage() {
     return true;
   };
 
+  const resetForm = () => {
+    setForm({
+      id: null,
+      modelo: '', 
+      placa: '', 
+      km_inicial: '', 
+      km_locada: '', 
+      cidade: '', 
+      locadora: '', 
+      observacoes: '',
+      ativo: true
+    });
+    setEditing(false);
+  };
+
+  const handleEdit = (veiculo) => {
+    setForm({
+      id: veiculo.id,
+      modelo: veiculo.modelo || '',
+      placa: veiculo.placa || '',
+      km_inicial: veiculo.km_inicial || '',
+      km_locada: veiculo.km_locada || '',
+      cidade: veiculo.cidade || '',
+      locadora: veiculo.locadora || '',
+      observacoes: veiculo.observacoes || '',
+      ativo: veiculo.ativo !== false
+    });
+    setEditing(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleStatus = async (id, currentStatus) => {
+    if (!window.confirm(`Tem certeza que deseja ${currentStatus ? 'inativar' : 'ativar'} este veículo?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('veiculos')
+        .update({ ativo: !currentStatus })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setVeiculos(veiculos.map(v => 
+        v.id === id ? { ...v, ativo: !currentStatus } : v
+      ));
+      
+      setFormSuccess(`Veículo ${!currentStatus ? 'ativado' : 'inativado'} com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao atualizar status do veículo:', error);
+      setFormError('Erro ao atualizar status do veículo.');
+    }
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
     setFormError('');
@@ -294,30 +456,59 @@ export default function VeiculosPage() {
     if (!validateForm()) return;
     setIsSubmitting(true);
     if (!user) {
-      setFormError('Você precisa estar logado para cadastrar um veículo.');
+      setFormError('Você precisa estar logado para realizar esta ação.');
       return;
     }
 
-    const payload = {
-      modelo: form.modelo.trim(),
-      placa: form.placa.trim() || null,
-      km_inicial: form.km_inicial ? parseInt(form.km_inicial) : null,
-      km_locada: form.km_locada ? parseInt(form.km_locada) : null,
-      cidade: form.cidade.trim() || null,
-      locadora: form.locadora.trim() || null,
-      observacoes: form.observacoes.trim() || null,
-      created_by: user.id,
-      updated_by: user.id
-    };
-    const { error } = await supabase.from('veiculos').insert([payload]);
-    if (error) {
-      setFormError('Erro ao cadastrar veículo.');
-    } else {
-      setFormSuccess('Veículo cadastrado com sucesso!');
-      setForm({ modelo: '', placa: '', km_inicial: '', km_locada: '', cidade: '', locadora: '', observacoes: '' });
+    try {
+      const veiculoData = {
+        modelo: form.modelo.trim(),
+        placa: form.placa.trim() || null,
+        km_inicial: form.km_inicial && form.km_inicial !== '' ? parseInt(form.km_inicial) : null,
+        km_locada: form.km_locada && form.km_locada !== '' ? parseInt(form.km_locada) : null,
+        cidade: form.cidade.trim() || null,
+        locadora: form.locadora.trim() || null,
+        observacoes: form.observacoes.trim() || null,
+        ativo: form.ativo,
+        updated_by: user.id
+      };
+
+      if (!editing) {
+        veiculoData.created_by = user.id;
+      }
+
+      if (editing) {
+        // Atualizar veículo existente
+        const { data, error } = await supabase
+          .from('veiculos')
+          .update(veiculoData)
+          .eq('id', form.id)
+          .select();
+
+        if (error) throw error;
+        
+        setFormSuccess('Veículo atualizado com sucesso!');
+      } else {
+        // Criar novo veículo
+        veiculoData.created_by = user.id;
+        const { data, error } = await supabase
+          .from('veiculos')
+          .insert([veiculoData])
+          .select();
+
+        if (error) throw error;
+        
+        setFormSuccess('Veículo cadastrado com sucesso!');
+      }
+      
+      resetForm();
       fetchVeiculos();
+    } catch (error) {
+      console.error('Erro ao salvar veículo:', error);
+      setFormError(error.message || 'Erro ao salvar veículo.');
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -364,9 +555,26 @@ export default function VeiculosPage() {
         </FieldGroup>
         {formError && <Message type="error"><FaExclamationCircle /> {formError}</Message>}
         {formSuccess && <Message type="success"><FaCheckCircle /> {formSuccess}</Message>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: 10 }}>
+          {editing && (
+            <Button 
+              type="button" 
+              onClick={resetForm}
+              style={{ background: colors.danger, marginRight: 'auto' }}
+            >
+              <FaTimes /> Cancelar
+            </Button>
+          )}
           <Button type="submit" disabled={isSubmitting}>
-            <FaPlus /> {isSubmitting ? 'Salvando...' : 'Cadastrar Veículo'}
+            {editing ? (
+              <>
+                <FaSave /> {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
+              </>
+            ) : (
+              <>
+                <FaPlus /> {isSubmitting ? 'Salvando...' : 'Cadastrar Veículo'}
+              </>
+            )}
           </Button>
         </div>
       </FormSection>
@@ -380,7 +588,7 @@ export default function VeiculosPage() {
       }}>
         Veículos Cadastrados
       </h3>
-      <VehiclesGrid>
+      <StyledTableContainer>
         {loading ? (
           <EmptyState>Carregando veículos...</EmptyState>
         ) : veiculos.length === 0 ? (
@@ -389,50 +597,54 @@ export default function VeiculosPage() {
             <p>Nenhum veículo cadastrado</p>
           </EmptyState>
         ) : (
-          veiculos.map(veic => (
-            <VehicleCard key={veic.id}>
-              <VehicleHeader>
-                <FaCar />
-                <h3>{veic.modelo}</h3>
-              </VehicleHeader>
-              <VehicleBody>
-                {veic.placa && (
-                  <VehicleInfo>
-                    <FaCar />
-                    <span>Placa: {veic.placa}</span>
-                  </VehicleInfo>
-                )}
-                {(veic.km_inicial || veic.km_locada) && (
-                  <VehicleInfo>
-                    <FaTachometerAlt />
-                    <span>
-                      {veic.km_inicial && `Inicial: ${veic.km_inicial} km`}
-                      {veic.km_inicial && veic.km_locada && ' • '}
-                      {veic.km_locada && `Locada: ${veic.km_locada} km`}
-                    </span>
-                  </VehicleInfo>
-                )}
-                {(veic.cidade || veic.locadora) && (
-                  <VehicleInfo>
-                    <FaMapMarkerAlt />
-                    <span>
-                      {veic.cidade}
-                      {veic.cidade && veic.locadora && ' • '}
-                      {veic.locadora}
-                    </span>
-                  </VehicleInfo>
-                )}
-                {veic.observacoes && (
-                  <VehicleInfo>
-                    <FaInfoCircle />
-                    <span>{veic.observacoes}</span>
-                  </VehicleInfo>
-                )}
-              </VehicleBody>
-            </VehicleCard>
-          ))
+          <StyledTable>
+            <thead>
+              <tr>
+                <th>Modelo</th>
+                <th>Placa</th>
+                <th>Situação</th>
+                <th>Cidade</th>
+                <th>Locadora</th>
+                <th>Observações</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {veiculos.map(veic => (
+                <tr key={veic.id} className={!veic.ativo ? 'inativo' : ''}>
+                  <td>{veic.modelo}</td>
+                  <td>{veic.placa}</td>
+                  <td>
+                    <StatusBadge $active={veic.ativo !== false}>
+                      {veic.ativo !== false ? <FaCheck /> : <FaBan />}
+                      {veic.ativo !== false ? 'Ativo' : 'Inativo'}
+                    </StatusBadge>
+                  </td>
+                  <td>{veic.cidade}</td>
+                  <td>{veic.locadora}</td>
+                  <td>{veic.observacoes}</td>
+                  <td>
+                    <ActionButton 
+                      onClick={() => handleEdit(veic)}
+                      title="Editar veículo"
+                      className="edit"
+                    >
+                      <FaEdit />
+                    </ActionButton>
+                    <ActionButton 
+                      className={veic.ativo !== false ? 'delete' : 'activate'}
+                      onClick={() => handleToggleStatus(veic.id, veic.ativo !== false)}
+                      title={veic.ativo !== false ? 'Inativar veículo' : 'Ativar veículo'}
+                    >
+                      {veic.ativo !== false ? <FaBan /> : <FaCheck />}
+                    </ActionButton>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </StyledTable>
         )}
-      </VehiclesGrid>
+      </StyledTableContainer>
     </MainContainer>
   );
 }
