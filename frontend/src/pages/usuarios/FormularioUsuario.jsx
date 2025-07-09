@@ -287,21 +287,18 @@ export default function FormularioUsuario() {
       };
 
       if (isEditing) {
+        // Se houver senha para atualizar, adiciona ao objeto de atualização
+        if (usuario.senha) {
+          userData.senha = usuario.senha;
+        }
+        
         // Atualizar usuário existente
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('usuarios')
           .update(userData)
           .eq('id', id);
           
         if (error) throw error;
-        
-        // Se houver senha para atualizar
-        if (usuario.senha) {
-          const { error: authError } = await supabase.auth.updateUser({
-            password: usuario.senha
-          });
-          if (authError) throw authError;
-        }
         
         toast.success('Usuário atualizado com sucesso!');
       } else {
@@ -321,7 +318,6 @@ export default function FormularioUsuario() {
         if (error) throw error;
         
         // Adicionar dados adicionais na tabela de perfis
-        // O ID será gerado automaticamente pelo banco de dados
         const { error: profileError } = await supabase
           .from('usuarios')
           .insert([{

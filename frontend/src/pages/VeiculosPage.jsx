@@ -43,54 +43,121 @@ const fadeIn = keyframes`
 
 // --- Styled-components para a tabela de veículos ---
 const StyledTableContainer = styled.div`
-  padding: 0 24px 24px 24px;
-  margin-top: 16px;
+  padding: 0 15px 15px 15px;
+  margin: 16px 0;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(26, 115, 232, 0.08);
   overflow-x: auto;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    padding: 0 10px 10px 10px;
+    margin: 10px 0;
+    border-radius: 8px;
+  }
 `;
 
 const StyledTable = styled.table`
   width: 100%;
+  min-width: 600px; /* Largura mínima para evitar quebra em telas pequenas */
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   background: #fff;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(26, 115, 232, 0.06);
 
-  thead tr {
-    background: ${colors.primary};
-    color: #fff;
-    font-weight: 600;
-    font-size: 1.05rem;
+  thead {
+    display: none; /* Esconde o cabeçalho em telas pequenas */
+    
+    @media (min-width: 768px) {
+      display: table-header-group; /* Mostra o cabeçalho em telas maiores */
+    }
+    
+    tr {
+      background: ${colors.primary};
+      color: #fff;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
   }
 
   th, td {
-    padding: 12px 8px;
+    padding: 10px 8px;
     text-align: left;
     border-bottom: 1px solid #e3eafc;
     vertical-align: middle;
+    
+    @media (max-width: 767px) {
+      display: block;
+      width: 100%;
+      text-align: right;
+      padding-left: 50%;
+      position: relative;
+      min-height: 30px;
+      
+      &::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        width: 45%;
+        font-weight: 600;
+        text-align: left;
+        color: ${colors.textSecondary};
+      }
+    }
   }
 
-  th:first-child {
-    border-top-left-radius: 8px;
-  }
-  th:last-child {
-    border-top-right-radius: 8px;
+  tbody {
+    tr {
+      transition: background 0.18s;
+      display: block;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      
+      @media (min-width: 768px) {
+        display: table-row;
+        margin-bottom: 0;
+        box-shadow: none;
+        border-radius: 0;
+      }
+      
+      &:hover {
+        background: #f6faff;
+      }
+      
+      &.inativo {
+        opacity: 0.8;
+        background: #f9f9f9;
+      }
+    }
+    
+    td {
+      @media (max-width: 767px) {
+        padding: 8px 10px 8px 50%;
+        border-bottom: 1px solid #f0f0f0;
+        
+        &:last-child {
+          border-bottom: none;
+        }
+        
+        &::before {
+          font-weight: 500;
+        }
+      }
+    }
   }
 
-  tbody tr {
-    transition: background 0.18s;
-  }
-  tbody tr:hover {
-    background: #f6faff;
-  }
-  tbody tr.inativo {
-    opacity: 0.65;
-    background: #f9f9f9;
+  @media (min-width: 768px) {
+    th:first-child {
+      border-top-left-radius: 8px;
+    }
+    th:last-child {
+      border-top-right-radius: 8px;
+    }
   }
 `;
 
@@ -109,30 +176,50 @@ const Banner = styled.div`
 
 const MainContainer = styled.div`
   background: ${colors.background};
-  max-width: 700px;
-  margin: 36px auto 0 auto;
+  max-width: 1200px;
+  margin: 20px auto 0 auto;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(26,115,232,0.08);
   overflow: hidden;
   animation: ${fadeIn} 0.4s;
+  width: 95%;
+  
+  @media (max-width: 768px) {
+    margin: 10px auto;
+    width: 98%;
+  }
 `;
 
 const FormSection = styled.form`
-  padding: 32px 24px 16px 24px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 15px;
+  
+  @media (max-width: 768px) {
+    padding: 15px 10px;
+  }
 `;
 
 const FieldGroup = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 const Field = styled.div`
-  flex: 1 1 220px;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 5px;
+  }
 `;
 const Label = styled.label`
   font-weight: 500;
@@ -288,6 +375,19 @@ const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  justify-content: center;
+  
+  @media (max-width: 767px) {
+    justify-content: flex-end;
+    padding: 5px 10px;
+    width: 100%;
+    border-radius: 6px;
+    
+    span {
+      flex: 1;
+      text-align: center;
+    }
+  }
 `;
 const Message = styled.div`
   margin: 10px 0 0 0;
@@ -308,16 +408,44 @@ const Message = styled.div`
 
 const ActionButton = styled.button`
   background: none;
-  border: none;
+  border: 1px solid ${colors.border};
   color: ${colors.primary};
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.9rem;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
   transition: all 0.2s;
+  width: 100%;
+  min-width: 80px;
+  background: white;
+  
+  .action-text {
+    display: none;
+    @media (min-width: 480px) {
+      display: inline;
+    }
+  }
+  
+  @media (min-width: 768px) {
+    width: auto;
+    min-width: 40px;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    
+    .action-text {
+      display: inline;
+    }
+  }
+  
+  @media (max-width: 479px) {
+    padding: 6px 8px;
+    min-width: 60px;
+  }
   
   &:hover {
     background: ${colors.primary}15;
@@ -612,32 +740,36 @@ export default function VeiculosPage() {
             <tbody>
               {veiculos.map(veic => (
                 <tr key={veic.id} className={!veic.ativo ? 'inativo' : ''}>
-                  <td>{veic.modelo}</td>
-                  <td>{veic.placa}</td>
-                  <td>
+                  <td data-label="Modelo">{veic.modelo || '-'}</td>
+                  <td data-label="Placa">{veic.placa || '-'}</td>
+                  <td data-label="Situação">
                     <StatusBadge $active={veic.ativo !== false}>
                       {veic.ativo !== false ? <FaCheck /> : <FaBan />}
-                      {veic.ativo !== false ? 'Ativo' : 'Inativo'}
+                      <span>{veic.ativo !== false ? 'Ativo' : 'Inativo'}</span>
                     </StatusBadge>
                   </td>
-                  <td>{veic.cidade}</td>
-                  <td>{veic.locadora}</td>
-                  <td>{veic.observacoes}</td>
-                  <td>
-                    <ActionButton 
-                      onClick={() => handleEdit(veic)}
-                      title="Editar veículo"
-                      className="edit"
-                    >
-                      <FaEdit />
-                    </ActionButton>
-                    <ActionButton 
-                      className={veic.ativo !== false ? 'delete' : 'activate'}
-                      onClick={() => handleToggleStatus(veic.id, veic.ativo !== false)}
-                      title={veic.ativo !== false ? 'Inativar veículo' : 'Ativar veículo'}
-                    >
-                      {veic.ativo !== false ? <FaBan /> : <FaCheck />}
-                    </ActionButton>
+                  <td data-label="Cidade">{veic.cidade || '-'}</td>
+                  <td data-label="Locadora">{veic.locadora || '-'}</td>
+                  <td data-label="Observações">{veic.observacoes || '-'}</td>
+                  <td data-label="Ações">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', justifyContent: 'flex-end' }}>
+                      <ActionButton 
+                        onClick={() => handleEdit(veic)}
+                        title="Editar veículo"
+                        className="edit"
+                      >
+                        <FaEdit />
+                        <span className="action-text">Editar</span>
+                      </ActionButton>
+                      <ActionButton 
+                        className={veic.ativo !== false ? 'delete' : 'activate'}
+                        onClick={() => handleToggleStatus(veic.id, veic.ativo !== false)}
+                        title={veic.ativo !== false ? 'Inativar veículo' : 'Ativar veículo'}
+                      >
+                        {veic.ativo !== false ? <FaBan /> : <FaCheck />}
+                        <span className="action-text">{veic.ativo !== false ? 'Inativar' : 'Ativar'}</span>
+                      </ActionButton>
+                    </div>
                   </td>
                 </tr>
               ))}
