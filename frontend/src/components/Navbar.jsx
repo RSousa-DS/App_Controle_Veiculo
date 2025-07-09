@@ -14,16 +14,18 @@ const NavbarContainer = styled.nav`
   
   .dropdown-menu {
     position: relative;
-    display: inline-block;
     height: 100%;
     display: flex;
     align-items: center;
+    border-color:#1a73e8;
+    background-color:#1a73e8;
+
     
     .dropdown-toggle {
       background: none;
       border: none;
       color: white;
-      padding: 8px 15px;
+      padding: 8px 12px;
       border-radius: 4px;
       cursor: pointer;
       display: flex;
@@ -32,8 +34,12 @@ const NavbarContainer = styled.nav`
       font-size: 0.95rem;
       transition: all 0.2s;
       height: 100%;
-      margin: 0;
       white-space: nowrap;
+      text-decoration: none;
+      font-family: inherit;
+      margin: 0;
+      line-height: 1.5;
+      border-color:#1a73e8;
       
       &:hover {
         background: rgba(255, 255, 255, 0.15);
@@ -174,6 +180,9 @@ const NavLink = styled(Link)`
   transition: all 0.2s;
   font-size: 0.95rem;
   white-space: nowrap;
+  height: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
   
   &:hover {
     background: rgba(255, 255, 255, 0.1);
@@ -182,6 +191,31 @@ const NavLink = styled(Link)`
   &.active {
     background: rgba(255, 255, 255, 0.2);
     font-weight: 500;
+  }
+  
+  &.dropdown-toggle {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 8px 12px;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s;
+    cursor: pointer;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    &.active {
+      background: rgba(255, 255, 255, 0.2);
+      font-weight: 500;
+    }
+    
+    svg:last-child {
+      margin-left: 4px;
+    }
   }
   
   .dropdown-menu & {
@@ -355,13 +389,15 @@ const Navbar = () => {
           </NavLink>
           
           {isAdmin && (
-            <div className="dropdown-menu">
-              <button 
-                className="dropdown-toggle" 
-                aria-expanded={location.pathname === '/veiculos' || location.pathname.startsWith('/usuarios')}
+            <div className="dropdown-menu" style={{ height: '100%' }}>
+              <NavLink 
+                as="div"
+                to="#" 
+                className={`dropdown-toggle ${location.pathname === '/veiculos' || location.pathname.startsWith('/usuarios') ? 'active' : ''}`}
+                onClick={(e) => e.preventDefault()}
               >
                 <FaCog /> Cadastros <FaChevronDown size={12} />
-              </button>
+              </NavLink>
               <div className="dropdown-content">
                 <Link 
                   to="/veiculos" 

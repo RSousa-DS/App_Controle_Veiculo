@@ -522,12 +522,19 @@ export default function HistoricoPage() {
       return;
     }
     try {
-      await axios.delete(`/api/reservas/${reservaParaExcluir.id}?senha=${senha}`);
+      const { error } = await supabase
+        .from('reservas')
+        .delete()
+        .eq('id', reservaParaExcluir.id);
+      
+      if (error) throw error;
+      
       setSuccess('Reserva excluída com sucesso.');
       setShowModal(false);
       fetchReservas();
     } catch (err) {
-      setError('Erro ao excluir reserva.');
+      console.error('Erro ao excluir reserva:', err);
+      setError('Erro ao excluir reserva. Verifique o console para mais detalhes.');
     }
   };
 

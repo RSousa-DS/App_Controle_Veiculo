@@ -1075,7 +1075,7 @@ const DevolucaoPage = () => {
                           <ActionButton
                             $variant="success"
                             onClick={() => handleOpenModal(reserva)}
-                            style={{ minWidth: 'auto' }}
+                            style={{ minWidth: 'auto', backgroundColor: '#2ba22b' }}
                             title="Registrar devolução"
                           >
                             <FaCheck /> Devolução
