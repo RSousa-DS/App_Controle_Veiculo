@@ -42,14 +42,28 @@ export default function ReservaForm({ onReservaCreated }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const checkReservaConflito = async (veiculo_id, data_inicio, data_fim) => {
+    try {
+      const { data, error } = await supabase
+        .from('reservas')
+        .select('id, data_retirada, data_devolucao_prevista')
+        .eq('veiculo_id', veiculo_id)
+        .or(`and(data_retirada.lte.${data_fim},data_devolucao_prevista.gte.${data_inicio})`)
+        .eq('status_devolucao', 'Pendente');
+      
+      if (error) throw error;
+      return data && data.length > 0;
+    } catch (error) {
+      console.error('Erro ao verificar conflito de reserva:', error);
+      return true; // Em caso de erro, previne a criação da reserva
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
     setIsSubmitting(true);
-    
-    // Verificação de permissão simplificada
-    // Se for uma edição, a permissão é verificada no componente que chama o formulário
     
     console.log('Iniciando submissão do formulário...');
     console.log('Dados do formulário:', formData);
@@ -61,11 +75,30 @@ export default function ReservaForm({ onReservaCreated }) {
         setIsSubmitting(false);
         return;
       }
+      
       // Converter datas para ISO
       const data_retirada = new Date(formData.dataRetirada).toISOString();
       const data_devolucao_prevista = new Date(formData.dataDevolucaoPrevista).toISOString();
+      
+      // Validar se a data de devolução é maior que a data de retirada
+      if (new Date(data_devolucao_prevista) <= new Date(data_retirada)) {
+        setError('A data de devolução deve ser posterior à data de retirada.');
+        setIsSubmitting(false);
+        return;
+      }
+      
       if (!user) {
         setError('Usuário não autenticado. Faça login novamente.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Verificar se já existe reserva para o veículo no período
+      const veiculo_id = parseInt(formData.veiculo);
+      const temConflito = await checkReservaConflito(veiculo_id, data_retirada, data_devolucao_prevista);
+      
+      if (temConflito) {
+        setError('Este veículo já está reservado no período selecionado.');
         setIsSubmitting(false);
         return;
       }
