@@ -33,6 +33,7 @@ const NavbarContainer = styled.nav`
       transition: all 0.2s;
       height: 100%;
       margin: 0;
+      white-space: nowrap;
       
       &:hover {
         background: rgba(255, 255, 255, 0.15);
@@ -61,7 +62,7 @@ const NavbarContainer = styled.nav`
       overflow: hidden;
       top: 100%;
       left: 0;
-      margin-top: 0;
+      margin-top: 5px;
       border: 1px solid rgba(0,0,0,0.1);
       
       a {

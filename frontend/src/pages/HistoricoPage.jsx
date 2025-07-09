@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { supabase } from '../supabaseClient';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { 
   FaCar, 
   FaUser, 
@@ -13,20 +13,96 @@ import {
   FaTrash,
   FaCheckCircle,
   FaTimesCircle,
-  FaClock
+  FaClock,
+  FaHistory
 } from 'react-icons/fa';
+
+// Cores baseadas no layout do menu
+const colors = {
+  primary: '#1a73e8',
+  primaryLight: '#e8f0fe',
+  secondary: '#34a853',
+  background: '#f8f9fa',
+  white: '#ffffff',
+  text: '#202124',
+  textSecondary: '#5f6368',
+  border: '#dadce0',
+  success: '#34a853',
+  warning: '#f9ab00',
+  error: '#d93025',
+  danger: '#dc3545',
+  gray50: '#f8f9fa',
+  gray100: '#f8f9fa',
+  gray200: '#e9ecef',
+  gray300: '#dee2e6',
+  gray400: '#ced4da',
+  gray500: '#adb5bd'
+};
+
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 
 // Estilos
 const Container = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  font-family: 'Google Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+  color: ${colors.text};
 `;
 
-const Title = styled.h2`
-  color: #1a73e8;
-  margin-bottom: 24px;
-  font-weight: 600;
+const Banner = styled.div`
+  background: ${colors.white};
+  color: ${colors.text};
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin: 0 auto 24px auto;
+  max-width: 1200px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  animation: ${fadeIn} 0.5s;
+  border-left: 4px solid ${colors.primary};
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+`;
+
+const BannerIcon = styled.div`
+  font-size: 2rem;
+  color: ${colors.primary};
+  background: ${colors.primaryLight};
+  border-radius: 50%;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+`;
+
+const BannerTitle = styled.h2`
+  font-weight: 500;
+  font-size: 1.5rem;
+  margin: 0;
+  color: ${colors.text};
+  font-family: 'Google Sans', 'Segoe UI', Roboto, sans-serif;
+  
+  @media (max-width: 768px) {
+    font-size: 1.3rem;
+  }
 `;
 
 const Section = styled.div`
@@ -400,10 +476,11 @@ export default function HistoricoPage() {
   const reservasFiltradas = reservas
     .map(reserva => ({
       ...reserva,
-      status: reserva.status_devolucao === 'Concluída' ? 'finalizada' : 'pendente'
+      status: reserva.status_devolucao?.toLowerCase() === 'concluido' || reserva.status_devolucao === 'Concluído' ? 'finalizada' : 'pendente'
     }))
     .filter(r => {
-      const veiculoOk = !filtro.veiculo || r.veiculo_id === filtro.veiculo;
+      // Converte ambos os lados para número para garantir a comparação correta
+      const veiculoOk = !filtro.veiculo || Number(r.veiculo_id) === Number(filtro.veiculo);
       const responsavelOk = !filtro.responsavel || 
         r.responsavel.toLowerCase().includes(filtro.responsavel.toLowerCase());
       const statusOk = !filtro.status || r.status === filtro.status;
@@ -592,7 +669,12 @@ export default function HistoricoPage() {
 
   return (
     <Container>
-      <Title>Histórico de Reservas</Title>
+      <Banner>
+        <BannerIcon>
+          <FaHistory />
+        </BannerIcon>
+        <BannerTitle>Histórico de Reservas</BannerTitle>
+      </Banner>
       
       <Section>
         <SectionHeader>
@@ -726,7 +808,7 @@ export default function HistoricoPage() {
               </thead>
               <tbody>
                 {reservasFiltradas.map((reserva) => {
-                  const status = reserva.status_devolucao === 'Concluída' ? 'finalizada' : 'pendente';
+                  const status = reserva.status_devolucao === 'concluido' || reserva.status_devolucao === 'Concluído' ? 'finalizada' : 'pendente';
                   const dataAtual = new Date();
                   const dataDevolucao = new Date(reserva.data_devolucao_prevista);
                   const atrasada = status === 'pendente' && dataAtual > dataDevolucao;
@@ -783,25 +865,27 @@ export default function HistoricoPage() {
                       </td>
                       <td data-label="Ações">
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button 
-                            onClick={() => handleDeleteClick(reserva)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: colors.danger,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseOver={(e) => e.target.style.backgroundColor = colors.gray200}
-                            onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                          >
-                            <FaTrash /> Excluir
-                          </button>
+                          {(reserva.status_devolucao?.toLowerCase() !== 'concluido' && reserva.status_devolucao !== 'Concluído') && (
+                            <button 
+                              onClick={() => handleDeleteClick(reserva)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: colors.danger,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseOver={(e) => e.target.style.backgroundColor = colors.gray200}
+                              onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                            >
+                              <FaTrash /> Excluir
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
