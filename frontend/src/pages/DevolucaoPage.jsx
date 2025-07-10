@@ -1032,7 +1032,7 @@ const DevolucaoPage = () => {
                               color: colors.textSecondary,
                               marginTop: '2px'
                             }}>
-                              Anterior: {reserva.veiculos.quilometragem_atual.toLocaleString('pt-BR')} km
+
                             </div>
                           )}
                         </>
