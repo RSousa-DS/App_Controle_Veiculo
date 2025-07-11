@@ -228,23 +228,33 @@ const VeiculoInfo = styled.div`
 `;
 
 const StatusBadge = styled.span`
-  background: ${props => {
-    if (props.$status === 'finalizada') return '#e6f4ea';
-    if (props.$status === 'pendente') return '#fef7e0';
-    return '#f5f6fa';
-  }};
-  color: ${props => {
-    if (props.$status === 'finalizada') return '#34a853';
-    if (props.$status === 'pendente') return '#fbbc04';
-    return '#6c757d';
-  }};
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 12px;
   border-radius: 16px;
   font-size: 0.85rem;
   font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  
+  ${({ $status }) => {
+    switch($status) {
+      case 'finalizada':
+        return `
+          background-color: ${colors.success}20;
+          color: ${colors.success};
+        `;
+      case 'pendente':
+        return `
+          background-color: ${colors.warning}20;
+          color: ${colors.warning};
+        `;
+      default:
+        return `
+          background-color: ${colors.gray200};
+          color: ${colors.textSecondary};
+        `;
+    }
+  }}
 `;
 
 const ReservaBody = styled.div`
@@ -399,6 +409,7 @@ const SuccessMessage = styled(ErrorMessage)`
 `;
 
 export default function HistoricoPage() {
+  // Estados
   const [reservas, setReservas] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [senha, setSenha] = useState('');
@@ -439,48 +450,58 @@ export default function HistoricoPage() {
   // Função para exportar dados para XLSX
   const exportToExcel = () => {
     try {
+      // Garante que temos um array válido para exportação
+      const dadosParaExportar = Array.isArray(reservasComKm) ? reservasComKm : [];
+      
       // Preparar os dados para exportação
-      const dataToExport = reservasFiltradas.map(reserva => ({
+      const dataToExport = dadosParaExportar.map(reserva => ({
         'ID': reserva.id,
         'Veículo': reserva.veiculos?.modelo || 'N/A',
         'Placa': reserva.veiculos?.placa || 'N/A',
-        'Responsável': reserva.nome_responsavel || 'N/A',
+        'Responsável': reserva.responsavel || 'N/A',
         'Data Retirada': formatarData(reserva.data_retirada, true),
         'Data Devolução': reserva.data_devolucao_prevista ? formatarData(reserva.data_devolucao_prevista, true) : 'Pendente',
         'Status': reserva.status_devolucao || 'Pendente',
         'Km Inicial': reserva.km_inicial || 'N/A',
         'Km Final': reserva.km_final || 'N/A',
+        'KM Percorrido': (() => {
+          const km = reserva.km_final && reserva.km_inicial
+            ? Number(reserva.km_final) - Number(reserva.km_inicial)
+            : null;
+          return km != null ? km : 'N/A';
+        })(),
         'Motivo': reserva.motivo || 'N/A',
         'Observações': reserva.observacoes || 'N/A'
       }));
 
       // Criar planilha
       const ws = XLSX.utils.json_to_sheet(dataToExport);
-      
+
       // Ajustar largura das colunas
       const wscols = [
-        {wch: 8},  // ID
-        {wch: 20}, // Veículo
-        {wch: 12}, // Placa
-        {wch: 25}, // Responsável
-        {wch: 20}, // Data Retirada
-        {wch: 20}, // Data Devolução
-        {wch: 15}, // Status
-        {wch: 10}, // Km Inicial
-        {wch: 10}, // Km Final
-        {wch: 25}, // Motivo
-        {wch: 40}  // Observações
+        { wch: 8 }, // ID
+        { wch: 20 }, // Veículo
+        { wch: 12 }, // Placa
+        { wch: 25 }, // Responsável
+        { wch: 20 }, // Data Retirada
+        { wch: 20 }, // Data Devolução
+        { wch: 15 }, // Status
+        { wch: 10 }, // Km Inicial
+        { wch: 10 }, // Km Final
+        { wch: 15 }, // KM Percorrido
+        { wch: 25 }, // Motivo
+        { wch: 40 } // Observações
       ];
       ws['!cols'] = wscols;
-      
+
       // Criar livro de trabalho
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Histórico de Reservas');
-      
+
       // Gerar arquivo
       const fileName = `historico_reservas_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, fileName);
-      
+
       setSuccess('Exportação concluída com sucesso!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
@@ -500,7 +521,7 @@ export default function HistoricoPage() {
           veiculos:veiculo_id (id, modelo, placa)
         `)
         .order('data_retirada', { ascending: false });
-      
+
       if (error) throw error;
       setReservas(data || []);
     } catch (error) {
@@ -513,7 +534,7 @@ export default function HistoricoPage() {
 
   useEffect(() => {
     fetchReservas();
-    
+
     // Buscar veículos para o dropdown
     const fetchVeiculos = async () => {
       try {
@@ -522,7 +543,7 @@ export default function HistoricoPage() {
           .select('id, modelo, placa')
           .eq('ativo', true)
           .order('modelo', { ascending: true });
-        
+
         if (error) throw error;
         setVeiculos(data || []);
       } catch (error) {
@@ -530,7 +551,7 @@ export default function HistoricoPage() {
         setError('Erro ao carregar a lista de veículos');
       }
     };
-    
+
     fetchVeiculos();
   }, []);
 
@@ -538,8 +559,6 @@ export default function HistoricoPage() {
     const { name, value } = e.target;
     setFiltro(prev => ({ ...prev, [name]: value }));
   };
-
-
 
   const reservasFiltradas = reservas
     .map(reserva => ({
@@ -549,10 +568,10 @@ export default function HistoricoPage() {
     .filter(r => {
       // Converte ambos os lados para número para garantir a comparação correta
       const veiculoOk = !filtro.veiculo || Number(r.veiculo_id) === Number(filtro.veiculo);
-      const responsavelOk = !filtro.responsavel || 
+      const responsavelOk = !filtro.responsavel ||
         r.responsavel.toLowerCase().includes(filtro.responsavel.toLowerCase());
       const statusOk = !filtro.status || r.status === filtro.status;
-      
+
       let dataOk = true;
       if (filtro.dataInicio) {
         dataOk = new Date(r.data_retirada) >= new Date(filtro.dataInicio);
@@ -562,10 +581,58 @@ export default function HistoricoPage() {
         dataFim.setHours(23, 59, 59); // Fim do dia
         dataOk = new Date(r.data_retirada) <= dataFim;
       }
-      
+
       return veiculoOk && responsavelOk && statusOk && dataOk;
     });
-    
+
+  // Função auxiliar para verificar e converter valores de KM
+  const parseKmValue = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    return !isNaN(num) && isFinite(num) ? num : null;
+  };
+
+  // Agrupar por veículo e ordenar por data_retirada
+  const reservasAgrupadas = reservasFiltradas
+    .filter(r => r.veiculo_id) // garantir que tenha veículo
+    .sort((a, b) => new Date(a.data_retirada) - new Date(b.data_retirada)); // ordenar por data
+
+  // Map para armazenar o último km_devolvido de cada veículo
+  const ultimoKmPorVeiculo = {};
+
+  const reservasComKm = reservasAgrupadas.map(reserva => {
+    const veiculoId = reserva.veiculo_id;
+    const kmAtual = parseKmValue(reserva.km_devolvido);
+    const kmAnterior = ultimoKmPorVeiculo[veiculoId] ?? null;
+
+    const kmPercorrido = kmAnterior !== null && kmAtual !== null
+      ? kmAtual - kmAnterior
+      : null;
+
+    // Atualiza o último km para este veículo
+    if (kmAtual !== null) {
+      ultimoKmPorVeiculo[veiculoId] = kmAtual;
+    }
+
+    console.group(`Reserva ID: ${reserva.id}`);
+    console.log('Veículo:', veiculoId);
+    console.log('KM Atual (devolvido):', kmAtual);
+    console.log('KM Anterior:', kmAnterior);
+    console.log('KM Percorrido:', kmPercorrido);
+    console.groupEnd();
+
+    return {
+      ...reserva,
+      kmPercorrido: kmPercorrido != null ? kmPercorrido.toString() : 'N/A',
+      _debug: {
+        kmAtual,
+        kmAnterior,
+        kmPercorrido,
+        status: reserva.status_devolucao?.toLowerCase() === 'concluido' ? 'concluido' : 'pendente'
+      }
+    };
+  });
+
   const limparFiltros = () => {
     setFiltro({
       veiculo: '',
@@ -576,8 +643,6 @@ export default function HistoricoPage() {
     });
   };
 
-
-
   const handleDeleteClick = (reserva) => {
     if (!isAdmin) {
       setError('Apenas administradores podem excluir reservas.');
@@ -586,7 +651,7 @@ export default function HistoricoPage() {
     // Adiciona o email do usuário logado ao objeto da reserva para verificação
     const reservaComEmail = {
       ...reserva,
-      email: '' // Adiciona o email do usuário logado
+      email: user?.email || ''
     };
     setReservaParaExcluir(reservaComEmail);
     setSenha('');
@@ -609,58 +674,37 @@ export default function HistoricoPage() {
     try {
       // Obtém o usuário atual para verificar se é admin
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      
+
       if (userError) throw userError;
       if (!currentUser) {
         setError('Usuário não autenticado. Por favor, faça login novamente.');
         return;
       }
 
-      // Verifica se o usuário é administrador
-      const { data: userData, error: userDataError } = await supabase
-        .from('usuarios')
-        .select('is_admin')
-        .eq('id', currentUser.id)
-        .single();
-
-      if (userDataError) throw userDataError;
-      if (!userData?.is_admin) {
-        setError('Apenas administradores podem excluir reservas.');
-        return;
-      }
-
-      // Verifica a senha do administrador
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // Verifica a senha do usuário
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: currentUser.email,
         password: senha
       });
 
-      if (signInError) {
-        if (signInError.message.includes('Invalid login credentials')) {
-          setError('Senha incorreta. Tente novamente.');
-        } else {
-          throw signInError;
-        }
-        return;
-      }
+      if (signInError) throw signInError;
 
-      // Se chegou até aqui, pode deletar a reserva
+      // Se chegou até aqui, a senha está correta, então pode excluir
       const { error: deleteError } = await supabase
         .from('reservas')
         .delete()
         .eq('id', reservaParaExcluir.id);
-      
+
       if (deleteError) throw deleteError;
-      
-      setSuccess('Reserva excluída com sucesso.');
+
+      // Atualiza a lista de reservas
+      await fetchReservas();
       setShowModal(false);
-      fetchReservas();
-    } catch (err) {
-      console.error('Erro ao excluir reserva:', err);
-      setError('Erro ao processar a exclusão. Tente novamente mais tarde.');
-    } finally {
-      // Limpa a senha do estado após o uso
-      setSenha('');
+      setSuccess('Reserva excluída com sucesso!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Erro ao excluir reserva:', error);
+      setError(error.message || 'Erro ao excluir reserva. Tente novamente.');
     }
   };
 
@@ -673,13 +717,13 @@ export default function HistoricoPage() {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    
+
     th, td {
       padding: 12px 16px;
       text-align: left;
       border-bottom: 1px solid ${colors.border};
     }
-    
+
     th {
       background-color: ${colors.primary};
       color: white;
@@ -688,34 +732,34 @@ export default function HistoricoPage() {
       font-size: 0.8rem;
       letter-spacing: 0.5px;
     }
-    
+
     tr:last-child td {
       border-bottom: none;
     }
-    
+
     tr:hover {
       background-color: ${colors.gray50};
     }
-    
+
     @media (max-width: 768px) {
       display: block;
-      
+
       thead {
         display: none;
       }
-      
+
       tbody, tr, td {
         display: block;
         width: 100%;
       }
-      
+
       tr {
         margin-bottom: 16px;
         border: 1px solid ${colors.border};
         border-radius: 8px;
         overflow: hidden;
       }
-      
+
       td {
         display: flex;
         justify-content: space-between;
@@ -725,7 +769,7 @@ export default function HistoricoPage() {
         position: relative;
         border-bottom: 1px solid ${colors.border};
       }
-      
+
       td:before {
         content: attr(data-label);
         position: absolute;
@@ -736,7 +780,7 @@ export default function HistoricoPage() {
         font-weight: 500;
         color: ${colors.text};
       }
-      
+
       td:last-child {
         border-bottom: none;
       }
@@ -751,9 +795,9 @@ export default function HistoricoPage() {
     border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 500;
-    
+
     ${({ $status }) => {
-      switch($status) {
+      switch ($status) {
         case 'finalizada':
           return `
             background-color: ${colors.success}20;
@@ -787,7 +831,7 @@ export default function HistoricoPage() {
           </BannerIcon>
           <BannerTitle>Histórico de Reservas</BannerTitle>
         </div>
-        <Button 
+        <Button
           onClick={exportToExcel}
           style={{
             backgroundColor: colors.success,
@@ -814,14 +858,14 @@ export default function HistoricoPage() {
           <FaFilter />
           <span>Filtros</span>
         </SectionHeader>
-        
+
         <FilterSection>
           <FilterRow>
             <FilterGroup>
               <FilterLabel>Veículo</FilterLabel>
-              <FilterSelect 
-                name="veiculo" 
-                value={filtro.veiculo} 
+              <FilterSelect
+                name="veiculo"
+                value={filtro.veiculo}
                 onChange={handleFiltroChange}
               >
                 <option value="">Todos os Veículos</option>
@@ -832,23 +876,23 @@ export default function HistoricoPage() {
                 ))}
               </FilterSelect>
             </FilterGroup>
-            
+
             <FilterGroup>
               <FilterLabel>Responsável</FilterLabel>
-              <FilterInput 
-                type="text" 
-                placeholder="Filtrar por responsável" 
-                name="responsavel" 
-                value={filtro.responsavel} 
-                onChange={handleFiltroChange} 
+              <FilterInput
+                type="text"
+                placeholder="Filtrar por responsável"
+                name="responsavel"
+                value={filtro.responsavel}
+                onChange={handleFiltroChange}
               />
             </FilterGroup>
-            
+
             <FilterGroup>
               <FilterLabel>Status</FilterLabel>
-              <FilterSelect 
-                name="status" 
-                value={filtro.status} 
+              <FilterSelect
+                name="status"
+                value={filtro.status}
                 onChange={handleFiltroChange}
               >
                 <option value="">Todos os Status</option>
@@ -857,29 +901,29 @@ export default function HistoricoPage() {
               </FilterSelect>
             </FilterGroup>
           </FilterRow>
-          
+
           <FilterRow>
             <FilterGroup>
               <FilterLabel>Data Inicial</FilterLabel>
-              <FilterInput 
-                type="date" 
-                name="dataInicio" 
-                value={filtro.dataInicio} 
+              <FilterInput
+                type="date"
+                name="dataInicio"
+                value={filtro.dataInicio}
                 onChange={handleFiltroChange}
               />
             </FilterGroup>
-            
+
             <FilterGroup>
               <FilterLabel>Data Final</FilterLabel>
-              <FilterInput 
-                type="date" 
-                name="dataFim" 
-                value={filtro.dataFim} 
+              <FilterInput
+                type="date"
+                name="dataFim"
+                value={filtro.dataFim}
                 onChange={handleFiltroChange}
                 min={filtro.dataInicio}
               />
             </FilterGroup>
-            
+
             <FilterGroup style={{ display: 'flex', alignItems: 'flex-end' }}>
               <ResetButton onClick={limparFiltros}>
                 <FaTimesCircle />
@@ -889,7 +933,7 @@ export default function HistoricoPage() {
           </FilterRow>
         </FilterSection>
       </Section>
-      
+
       <Section>
         <SectionHeader>
           <FaCar />
@@ -898,21 +942,21 @@ export default function HistoricoPage() {
             {reservasFiltradas.length} {reservasFiltradas.length === 1 ? 'registro' : 'registros'} encontrados
           </span>
         </SectionHeader>
-        
+
         {error && (
           <ErrorMessage>
             <FaTimesCircle />
             {error}
           </ErrorMessage>
         )}
-        
+
         {success && (
           <SuccessMessage>
             <FaCheckCircle />
             {success}
           </SuccessMessage>
         )}
-        
+
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
             Carregando reservas...
@@ -936,16 +980,32 @@ export default function HistoricoPage() {
                   <th>Retirada</th>
                   <th>Devolução</th>
                   <th>Status</th>
+                  <th>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      KM Percorrido
+                      <div
+                        style={{
+                          position: 'relative',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          cursor: 'help'
+                        }}
+                        title="Distância percorrida (em KM) desde a última devolução do veículo. Calculado automaticamente com base no KM atual e do último registro de devolução."
+                      >
+                        <FaInfoCircle size={14} style={{ opacity: 0.7 }} />
+                      </div>
+                    </div>
+                  </th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {reservasFiltradas.map((reserva) => {
+                {Array.isArray(reservasComKm) && reservasComKm.map((reserva) => {
                   const status = reserva.status_devolucao === 'concluido' || reserva.status_devolucao === 'Concluído' ? 'finalizada' : 'pendente';
                   const dataAtual = new Date();
                   const dataDevolucao = new Date(reserva.data_devolucao_prevista);
                   const atrasada = status === 'pendente' && dataAtual > dataDevolucao;
-                  
+
                   return (
                     <tr key={reserva.id}>
                       <td data-label="Veículo">
@@ -995,6 +1055,31 @@ export default function HistoricoPage() {
                             </StatusBadge>
                           )}
                         </div>
+                      </td>
+                      <td data-label="KM Percorrido" style={{ textAlign: 'center' }}>
+                        {reserva.kmPercorrido !== 'N/A' ? (
+                          <div
+                            style={{
+                              fontWeight: '500',
+                              color: reserva._debug.kmPercorrido < 0 ? colors.danger :
+                                reserva._debug.kmPercorrido > 1000 ? colors.warning : 'inherit',
+                              position: 'relative',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title={
+                              reserva._debug.kmPercorrido < 0 ? 
+                                'Valor inválido: KM atual menor que KM anterior' :
+                                `KM Anterior: ${reserva._debug.kmAnterior || 'N/A'}`
+                            }
+                          >
+                            {reserva.kmPercorrido} km
+                            {reserva._debug.kmPercorrido < 0 && (
+                              <FaExclamationTriangle style={{ color: colors.danger }} />
+                            )}
+                          </div>
+                        ) : 'N/A'}
                       </td>
                       <td data-label="Ações">
                         <div style={{ display: 'flex', gap: '8px' }}>
