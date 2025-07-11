@@ -1070,8 +1070,8 @@ const DevolucaoPage = () => {
                           </ActionButton>
                         )}
                         
-                        {/* Botão Devolução - Visível apenas para veículos com status Pendente */}
-                        {reserva.status === 'Pendente' && (
+                        {/* Botão Devolução - Visível para veículos com status Pendente ou Atrasado */}
+                        {(reserva.status === 'Pendente' || reserva.status === 'atrasada') && (
                           <ActionButton
                             $variant="success"
                             onClick={() => handleOpenModal(reserva)}

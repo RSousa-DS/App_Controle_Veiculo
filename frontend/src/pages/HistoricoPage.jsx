@@ -18,7 +18,8 @@ import {
   FaClock,
   FaHistory,
   FaUserShield,
-  FaFileExcel
+  FaFileExcel,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 
 // Cores baseadas no layout do menu
@@ -454,43 +455,58 @@ export default function HistoricoPage() {
       const dadosParaExportar = Array.isArray(reservasComKm) ? reservasComKm : [];
       
       // Preparar os dados para exportação
-      const dataToExport = dadosParaExportar.map(reserva => ({
-        'ID': reserva.id,
-        'Veículo': reserva.veiculos?.modelo || 'N/A',
-        'Placa': reserva.veiculos?.placa || 'N/A',
-        'Responsável': reserva.responsavel || 'N/A',
-        'Data Retirada': formatarData(reserva.data_retirada, true),
-        'Data Devolução': reserva.data_devolucao_prevista ? formatarData(reserva.data_devolucao_prevista, true) : 'Pendente',
-        'Status': reserva.status_devolucao || 'Pendente',
-        'Km Inicial': reserva.km_inicial || 'N/A',
-        'Km Final': reserva.km_final || 'N/A',
-        'KM Percorrido': (() => {
-          const km = reserva.km_final && reserva.km_inicial
-            ? Number(reserva.km_final) - Number(reserva.km_inicial)
-            : null;
-          return km != null ? km : 'N/A';
-        })(),
-        'Motivo': reserva.motivo || 'N/A',
-        'Observações': reserva.observacoes || 'N/A'
-      }));
+      const dataToExport = dadosParaExportar.map(reserva => {
+        // Verifica se é uma reserva concluída para mostrar data de devolução real
+        const dataDevolucao = reserva.status_devolucao === 'Concluído' && reserva.data_devolucao_real
+          ? formatarData(reserva.data_devolucao_real, true)
+          : (reserva.data_devolucao_prevista ? formatarData(reserva.data_devolucao_prevista, true) : 'Pendente');
+        
+        // Obtém o KM Percorrido já calculado
+        const kmPercorrido = reserva.kmPercorrido !== 'N/A' 
+          ? Number(reserva.kmPercorrido) 
+          : 'N/A';
+        
+        return {
+          'ID': reserva.id,
+          'Veículo': reserva.veiculos?.modelo || 'N/A',
+          'Placa': reserva.veiculos?.placa || 'N/A',
+          'Responsável': reserva.responsavel || 'N/A',
+          'E-mail': reserva.email || 'N/A',
+          'Departamento': reserva.departamento || 'N/A',
+          'Data Retirada': formatarData(reserva.data_retirada, true),
+          'Data Devolução Prevista': reserva.data_devolucao_prevista ? formatarData(reserva.data_devolucao_prevista, true) : 'N/A',
+          'Data Devolução Real': reserva.data_devolucao_real ? formatarData(reserva.data_devolucao_real, true) : 'Pendente',
+          'Status': reserva.status_devolucao || 'Pendente',
+          'KM Devolvido': reserva.km_devolvido || 'N/A',
+          'KM Percorrido': kmPercorrido,
+          'Local Estacionado': reserva.local_estacionado || 'N/A',
+          'Observações': reserva.observacoes || 'N/A',
+          'Data Criação': reserva.data_criacao ? formatarData(reserva.data_criacao, true) : 'N/A',
+          'Data Atualização': reserva.data_atualizacao ? formatarData(reserva.data_atualizacao, true) : 'N/A'
+        };
+      });
 
       // Criar planilha
       const ws = XLSX.utils.json_to_sheet(dataToExport);
 
       // Ajustar largura das colunas
       const wscols = [
-        { wch: 8 }, // ID
-        { wch: 20 }, // Veículo
-        { wch: 12 }, // Placa
-        { wch: 25 }, // Responsável
-        { wch: 20 }, // Data Retirada
-        { wch: 20 }, // Data Devolução
-        { wch: 15 }, // Status
-        { wch: 10 }, // Km Inicial
-        { wch: 10 }, // Km Final
-        { wch: 15 }, // KM Percorrido
-        { wch: 25 }, // Motivo
-        { wch: 40 } // Observações
+        { wch: 8 },   // ID
+        { wch: 20 },  // Veículo
+        { wch: 12 },  // Placa
+        { wch: 25 },  // Responsável
+        { wch: 25 },  // E-mail
+        { wch: 20 },  // Departamento
+        { wch: 20 },  // Data Retirada
+        { wch: 25 },  // Data Devolução Prevista
+        { wch: 25 },  // Data Devolução Real
+        { wch: 15 },  // Status
+        { wch: 15 },  // KM Devolvido
+        { wch: 15 },  // KM Percorrido
+        { wch: 20 },  // Local Estacionado
+        { wch: 40 },  // Observações
+        { wch: 25 },  // Data Criação
+        { wch: 25 }   // Data Atualização
       ];
       ws['!cols'] = wscols;
 
@@ -592,43 +608,72 @@ export default function HistoricoPage() {
     return !isNaN(num) && isFinite(num) ? num : null;
   };
 
-  // Agrupar por veículo e ordenar por data_retirada
-  const reservasAgrupadas = reservasFiltradas
-    .filter(r => r.veiculo_id) // garantir que tenha veículo
-    .sort((a, b) => new Date(a.data_retirada) - new Date(b.data_retirada)); // ordenar por data
+  // Filtrar apenas reservas com veículo e km_devolvido preenchido
+  const reservasComKmPreenchido = reservasFiltradas
+    .filter(r => r.veiculo_id && r.km_devolvido !== null && r.km_devolvido !== undefined)
+    .sort((a, b) => new Date(a.data_retirada) - new Date(b.data_retirada)); // Ordenar por data_retirada
 
-  // Map para armazenar o último km_devolvido de cada veículo
-  const ultimoKmPorVeiculo = {};
+  // Agrupar por veículo
+  const reservasPorVeiculo = reservasComKmPreenchido.reduce((acc, reserva) => {
+    const veiculoId = reserva.veiculo_id;
+    if (!acc[veiculoId]) {
+      acc[veiculoId] = [];
+    }
+    acc[veiculoId].push(reserva);
+    return acc;
+  }, {});
 
-  const reservasComKm = reservasAgrupadas.map(reserva => {
+  // Calcular KM Percorrido para cada reserva
+  const reservasComKm = reservasFiltradas.map(reserva => {
     const veiculoId = reserva.veiculo_id;
     const kmAtual = parseKmValue(reserva.km_devolvido);
-    const kmAnterior = ultimoKmPorVeiculo[veiculoId] ?? null;
-
-    const kmPercorrido = kmAnterior !== null && kmAtual !== null
-      ? kmAtual - kmAnterior
-      : null;
-
-    // Atualiza o último km para este veículo
-    if (kmAtual !== null) {
-      ultimoKmPorVeiculo[veiculoId] = kmAtual;
+    
+    // Se não tiver km_devolvido, retorna N/A
+    if (kmAtual === null) {
+      return {
+        ...reserva,
+        kmPercorrido: 'N/A',
+        _debug: {
+          kmAtual: null,
+          kmAnterior: null,
+          kmPercorrido: null,
+          status: reserva.status_devolucao?.toLowerCase() === 'concluido' ? 'concluido' : 'pendente'
+        }
+      };
     }
-
+    
+    // Encontra todas as reservas anteriores para este veículo
+    const reservasAnteriores = (reservasPorVeiculo[veiculoId] || [])
+      .filter(r => new Date(r.data_retirada) < new Date(reserva.data_retirada));
+    
+    // Ordena por data_retirada decrescente para pegar a mais recente
+    reservasAnteriores.sort((a, b) => new Date(b.data_retirada) - new Date(a.data_retirada));
+    
+    // Pega o km_devolvido da reserva anterior mais recente, se existir
+    const reservaAnterior = reservasAnteriores[0];
+    const kmAnterior = reservaAnterior ? parseKmValue(reservaAnterior.km_devolvido) : null;
+    
+    // Calcula o km percorrido (só se tiver reserva anterior com km válido)
+    const kmPercorrido = kmAnterior !== null ? kmAtual - kmAnterior : null;
+    
     console.group(`Reserva ID: ${reserva.id}`);
     console.log('Veículo:', veiculoId);
+    console.log('Data Retirada:', reserva.data_retirada);
     console.log('KM Atual (devolvido):', kmAtual);
     console.log('KM Anterior:', kmAnterior);
     console.log('KM Percorrido:', kmPercorrido);
     console.groupEnd();
-
+    
     return {
       ...reserva,
-      kmPercorrido: kmPercorrido != null ? kmPercorrido.toString() : 'N/A',
+      kmPercorrido: kmPercorrido !== null ? kmPercorrido.toString() : 'N/A',
       _debug: {
         kmAtual,
         kmAnterior,
         kmPercorrido,
-        status: reserva.status_devolucao?.toLowerCase() === 'concluido' ? 'concluido' : 'pendente'
+        status: reserva.status_devolucao?.toLowerCase() === 'concluido' ? 'concluido' : 'pendente',
+        dataRetirada: reserva.data_retirada,
+        reservaAnteriorId: reservaAnterior?.id || null
       }
     };
   });
