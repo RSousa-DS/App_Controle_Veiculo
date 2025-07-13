@@ -1188,8 +1188,7 @@ const DevolucaoPage = () => {
               >
                 <option value="">Todos os Status</option>
                 <option value="pendente">Pendente</option>
-                <option value="finalizada">Finalizada</option>
-                <option value="atrasada">Atrasada</option>
+                <option value="Concluído">Concluído</option>
               </FilterSelect>
             </FilterGroup>
           </FilterRow>
