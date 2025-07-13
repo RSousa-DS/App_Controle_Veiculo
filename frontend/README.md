@@ -1,69 +1,63 @@
-# React + TypeScript + Vite
+# Frontend - Sistema de Controle de Veículos
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicativo web para gerenciamento de frota de veículos, construído com React e integrado ao Supabase para autenticação e banco de dados.
 
-Currently, two official plugins are available:
+## 🏗️ Estrutura do Projeto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── assets/          # Recursos estáticos (imagens, ícones, etc.)
+├── components/      # Componentes reutilizáveis
+├── contexts/        # Contextos React para gerenciamento de estado global
+├── lib/             # Bibliotecas e configurações de terceiros
+├── pages/           # Componentes de páginas
+│   └── usuarios/    # Páginas específicas de gerenciamento de usuários
+└── services/        # Serviços e integrações com APIs
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🚀 Como executar
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Instale as dependências:
+   ```bash
+   npm install
+   ```
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. Configure as variáveis de ambiente:
+   Crie um arquivo `.env` na raiz do frontend com:
+   ```
+   VITE_SUPABASE_URL=sua_url_do_supabase
+   VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
+   ```
+
+3. Inicie o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+
+## 🛠 Tecnologias Principais
+
+- **Framework**: React 18
+- **Build**: Vite
+- **UI**: Material UI (MUI) + Styled Components
+- **Gerenciamento de Estado**: Context API
+- **Roteamento**: React Router DOM
+- **Autenticação**: Supabase Auth
+- **Banco de Dados**: Supabase (PostgreSQL)
+
+## 📦 Scripts Disponíveis
+
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Gera a versão de produção
+- `npm run lint` - Executa o linter
+- `npm run preview` - Visualiza a build de produção localmente
+
+## 🧪 Testes
+
+Para executar os testes:
+```bash
+npm test
 ```
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.

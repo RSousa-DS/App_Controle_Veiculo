@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import styled, { keyframes, css } from 'styled-components';
+import { FaFilter, FaTimesCircle } from 'react-icons/fa';
 
 const messageFadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
@@ -166,6 +167,98 @@ const TableContainer = styled.div`
   
   @media (max-width: 768px) {
     border-radius: 8px;
+  }
+`;
+
+// Estilos para os filtros
+
+const Section = styled.div`
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  overflow: hidden;
+`;
+
+const SectionHeader = styled.div`
+  background: #1a73e8;
+  color: white;
+  padding: 16px 24px;
+  font-size: 1.2rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const FilterSection = styled.div`
+  padding: 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 10px;
+`;
+
+const FilterGroup = styled.div`
+  flex: 1;
+  min-width: 200px;
+`;
+
+const FilterLabel = styled.label`
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #495057;
+`;
+
+const FilterInput = styled.input`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.95rem;
+`;
+
+const FilterSelect = styled.select`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background-color: white;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  padding-right: 36px;
+  
+  &:focus {
+    outline: none;
+    border-color: ${colors.primary};
+    box-shadow: 0 0 0 2px ${colors.primaryLight};
+  }
+`;
+
+const ResetButton = styled.button`
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  &:hover {
+    background: #5a6268;
   }
 `;
 
@@ -502,6 +595,7 @@ const EmptyText = styled.td`
 
 const DevolucaoPage = () => {
   const [reservas, setReservas] = useState([]);
+  const [filteredReservas, setFilteredReservas] = useState([]);
   const [selectedReserva, setSelectedReserva] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -518,6 +612,17 @@ const DevolucaoPage = () => {
   const [success, setSuccess] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewReserva, setViewReserva] = useState(null);
+  
+  // Estados para os filtros
+  const [filtro, setFiltro] = useState({
+    veiculo: '',
+    responsavel: '',
+    status: '',
+    dataInicio: '',
+    dataFim: ''
+  });
+  
+  const [veiculos, setVeiculos] = useState([]);
 
   const fetchReservas = async () => {
     try {
@@ -597,9 +702,11 @@ const DevolucaoPage = () => {
         });
         
         setReservas(reservasFormatadas);
+        setFilteredReservas(reservasFormatadas); // Atualiza filteredReservas com os dados iniciais
       } else {
         // Nenhuma reserva encontrada
         setReservas([]);
+        setFilteredReservas([]);
       }
     } catch (error) {
       console.error('Erro ao buscar reservas:', error);
@@ -622,9 +729,93 @@ const DevolucaoPage = () => {
     }
   };
 
+  // Atualiza a lista filtrada sempre que os filtros ou a lista de reservas mudar
+  useEffect(() => {
+    if (reservas.length > 0) {
+      const filtered = reservas.filter(reserva => {
+        // Filtro por veículo (usando o ID do veículo)
+        const veiculoMatch = !filtro.veiculo || 
+          (reserva.veiculo_id && String(reserva.veiculo_id) === String(filtro.veiculo));
+        
+        // Filtro por responsável
+        const responsavelMatch = !filtro.responsavel || 
+          (reserva.responsavel && reserva.responsavel.toLowerCase().includes(filtro.responsavel.toLowerCase()));
+        
+        // Filtro por status - considerando os valores possíveis: 'pendente', 'finalizada', 'atrasada'
+        const statusMatch = !filtro.status || 
+          (reserva.status && reserva.status.toLowerCase() === filtro.status.toLowerCase());
+        
+        // Filtro por data
+        const dataRetirada = reserva.data_retirada ? new Date(reserva.data_retirada) : null;
+        
+        const dataInicioMatch = !filtro.dataInicio || 
+          (dataRetirada && dataRetirada >= new Date(filtro.dataInicio + 'T00:00:00'));
+          
+        const dataFimMatch = !filtro.dataFim || 
+          (dataRetirada && dataRetirada <= new Date(filtro.dataFim + 'T23:59:59'));
+        
+        // Verifica o status da reserva
+        let statusReserva = reserva.status_devolucao || 'pendente';
+        if (!reserva.status_devolucao && reserva.atrasada) {
+          statusReserva = 'atrasada';
+        }
+        
+        const statusFiltroMatch = !filtro.status || 
+          (statusReserva && statusReserva.toLowerCase() === filtro.status.toLowerCase());
+        
+        return veiculoMatch && responsavelMatch && statusFiltroMatch && dataInicioMatch && dataFimMatch;
+      });
+      
+      setFilteredReservas(filtered);
+    } else {
+      setFilteredReservas([]);
+    }
+  }, [reservas, filtro]);
+  
+  // Busca a lista de veículos
+  const fetchVeiculos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('veiculos')
+        .select('id, placa, modelo, marca')
+        .order('modelo');
+      
+      if (error) throw error;
+      
+      if (data) {
+        setVeiculos(data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar veículos:', error);
+      setError('Erro ao carregar a lista de veículos.');
+    }
+  };
+  
+  // Carrega os dados iniciais ao iniciar o componente
   useEffect(() => {
     fetchReservas();
+    fetchVeiculos();
   }, []);
+  
+  // Manipulador de mudança nos filtros
+  const handleFiltroChange = (e) => {
+    const { name, value } = e.target;
+    setFiltro(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Limpa todos os filtros
+  const limparFiltros = () => {
+    setFiltro({
+      veiculo: '',
+      responsavel: '',
+      status: '',
+      dataInicio: '',
+      dataFim: ''
+    });
+  };
 
   const handleOpenModal = (reserva) => {
     setSelectedReserva(reserva);
@@ -952,6 +1143,89 @@ const DevolucaoPage = () => {
         <BannerTitle>Controle de Devolução de Veículos</BannerTitle>
       </Banner>
 
+      {/* Seção de Filtros */}
+      <Section>
+        <SectionHeader>
+          <FaFilter />
+          <span>Filtros</span>
+        </SectionHeader>
+        
+        <FilterSection>
+          <FilterRow>
+            <FilterGroup>
+              <FilterLabel>Veículo</FilterLabel>
+              <FilterSelect
+                name="veiculo"
+                value={filtro.veiculo}
+                onChange={handleFiltroChange}
+              >
+                <option value="">Todos os Veículos</option>
+                {veiculos.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.modelo} {v.placa ? `(${v.placa})` : ''}
+                  </option>
+                ))}
+              </FilterSelect>
+            </FilterGroup>
+
+            <FilterGroup>
+              <FilterLabel>Responsável</FilterLabel>
+              <FilterInput
+                type="text"
+                placeholder="Filtrar por responsável"
+                name="responsavel"
+                value={filtro.responsavel}
+                onChange={handleFiltroChange}
+              />
+            </FilterGroup>
+
+            <FilterGroup>
+              <FilterLabel>Status</FilterLabel>
+              <FilterSelect
+                name="status"
+                value={filtro.status}
+                onChange={handleFiltroChange}
+              >
+                <option value="">Todos os Status</option>
+                <option value="pendente">Pendente</option>
+                <option value="finalizada">Finalizada</option>
+                <option value="atrasada">Atrasada</option>
+              </FilterSelect>
+            </FilterGroup>
+          </FilterRow>
+
+          <FilterRow>
+            <FilterGroup>
+              <FilterLabel>Data Inicial</FilterLabel>
+              <FilterInput
+                type="date"
+                name="dataInicio"
+                value={filtro.dataInicio}
+                onChange={handleFiltroChange}
+              />
+            </FilterGroup>
+
+            <FilterGroup>
+              <FilterLabel>Data Final</FilterLabel>
+              <FilterInput
+                type="date"
+                name="dataFim"
+                value={filtro.dataFim}
+                onChange={handleFiltroChange}
+                min={filtro.dataInicio}
+              />
+            </FilterGroup>
+
+            <FilterGroup style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <ResetButton onClick={limparFiltros}>
+                <FaTimesCircle />
+                Limpar Filtros
+              </ResetButton>
+            </FilterGroup>
+          </FilterRow>
+        </FilterSection>
+      </Section>
+
       <TableContainer>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -979,12 +1253,12 @@ const DevolucaoPage = () => {
               </tr>
             </thead>
             <tbody>
-              {reservas.length === 0 ? (
+              {filteredReservas.length === 0 ? (
                 <tr>
-                  <EmptyText colSpan="8">Nenhuma reserva encontrada</EmptyText>
+                  <EmptyText colSpan="8">Nenhuma reserva encontrada com os filtros atuais</EmptyText>
                 </tr>
               ) : (
-                reservas.map((reserva) => (
+                filteredReservas.map((reserva) => (
                   <tr key={reserva.id}>
                     <td data-label="Veículo">
                       <div style={{ fontWeight: 500 }}>{reserva.veiculo}</div>
@@ -1275,61 +1549,41 @@ const DevolucaoPage = () => {
               <FaCar style={{ marginRight: '8px' }} />
               Registrar Devolução
             </ModalTitle>
-            
             <form onSubmit={handleSubmit}>
-              {error && (
-                <MessageContainer type="error">
-                  <FaInfoCircle />
-                  <div>{error}</div>
-                </MessageContainer>
-              )}
-              
-              {success && (
-                <MessageContainer type="success">
-                  <FaCheckCircle />
-                  <div>{success}</div>
-                </MessageContainer>
-              )}
-              
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ 
-                  backgroundColor: colors.gray50, 
-                  padding: '16px', 
-                  borderRadius: '8px',
-                  marginBottom: '20px'
-                }}>
-                  <div style={{ 
-                    fontSize: '0.9rem', 
-                    color: colors.textSecondary,
-                    marginBottom: '8px',
-                    fontWeight: 500
-                  }}>
-                    Veículo: <span style={{ color: colors.text, fontWeight: 600 }}>{selectedReserva.veiculo}</span>
-                  </div>
-                  <div style={{ 
-                    fontSize: '0.9rem', 
-                    color: colors.textSecondary,
-                    marginBottom: '8px'
-                  }}>
-                    Responsável: <span style={{ color: colors.text, fontWeight: 500 }}>{selectedReserva.responsavel}</span>
-                  </div>
-                  <div style={{ 
-                    fontSize: '0.9rem', 
-                    color: colors.textSecondary
-                  }}>
-                    Retirada em: <span style={{ color: colors.text, fontWeight: 500 }}>
-                      {new Date(selectedReserva.dataRetirada).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
+              <div style={{ padding: '16px' }}>
+              <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: colors.textSecondary,
+                marginBottom: '8px',
+                fontWeight: 500
+              }}>
+                Veículo: <span style={{ color: colors.text, fontWeight: 600 }}>{selectedReserva.veiculo}</span>
+              </div>
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: colors.textSecondary,
+                marginBottom: '8px'
+              }}>
+                Responsável: <span style={{ color: colors.text, fontWeight: 500 }}>{selectedReserva.responsavel}</span>
+              </div>
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: colors.textSecondary
+              }}>
+                Retirada em: <span style={{ color: colors.text, fontWeight: 500 }}>
+                  {new Date(selectedReserva.data_retirada).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
                 </div>
-                
-                <div style={{ marginBottom: '20px' }}>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
                   <label style={{
                     display: 'block',
                     marginBottom: '8px',
@@ -1483,7 +1737,8 @@ const DevolucaoPage = () => {
                       minHeight: '100px',
                       resize: 'vertical',
                       fontFamily: 'inherit',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      marginBottom: '12px'
                     }}
                     placeholder="Adicione observações sobre a devolução (opcional)"
                   />
@@ -1664,38 +1919,38 @@ const DevolucaoPage = () => {
                         </>
                       ) : (
                         <>
-                            <div style={{
-                              width: '60px',
-                              height: '60px',
-                              borderRadius: '50%',
-                              backgroundColor: colors.primaryLight + '30',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginBottom: '12px'
-                            }}>
-                              <FaCamera style={{ 
-                                fontSize: '24px', 
-                                color: colors.primary,
-                              }} />
-                            </div>
-                            <div style={{ 
-                              color: colors.primary, 
-                              fontWeight: 500,
-                              marginBottom: '4px',
-                              fontSize: '1rem'
-                            }}>
-                              Adicionar foto do painel
-                            </div>
-                            <div style={{ 
-                              fontSize: '0.85rem', 
-                              color: colors.textSecondary,
-                              maxWidth: '280px',
-                              margin: '0 auto',
-                              lineHeight: '1.4'
-                            }}>
-                              Tire uma foto nítida do painel do veículo mostrando claramente a quilometragem
-                            </div>
+                          <div style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '50%',
+                            backgroundColor: colors.primaryLight + '30',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '12px'
+                          }}>
+                            <FaCamera style={{ 
+                              fontSize: '24px', 
+                              color: colors.primary,
+                            }} />
+                          </div>
+                          <div style={{ 
+                            color: colors.primary, 
+                            fontWeight: 500,
+                            marginBottom: '4px',
+                            fontSize: '1rem'
+                          }}>
+                            Adicionar foto do painel
+                          </div>
+                          <div style={{ 
+                            fontSize: '0.85rem', 
+                            color: colors.textSecondary,
+                            maxWidth: '280px',
+                            margin: '0 auto',
+                            lineHeight: '1.4'
+                          }}>
+                            Tire uma foto nítida do painel do veículo mostrando claramente a quilometragem
+                          </div>
                         </>
                       )}
                     </label>

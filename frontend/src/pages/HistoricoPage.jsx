@@ -418,7 +418,7 @@ export default function HistoricoPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   const [filtro, setFiltro] = useState({
     veiculo: '',
@@ -471,6 +471,7 @@ export default function HistoricoPage() {
           'Veículo': reserva.veiculos?.modelo || 'N/A',
           'Placa': reserva.veiculos?.placa || 'N/A',
           'Responsável': reserva.responsavel || 'N/A',
+          'Usuário Solicitante': reserva.nomeUsuario || 'N/A',
           'E-mail': reserva.email || 'N/A',
           'Departamento': reserva.departamento || 'N/A',
           'Data Retirada': formatarData(reserva.data_retirada, true),
@@ -495,6 +496,7 @@ export default function HistoricoPage() {
         { wch: 20 },  // Veículo
         { wch: 12 },  // Placa
         { wch: 25 },  // Responsável
+        { wch: 25 },  // Usuário Solicitante
         { wch: 25 },  // E-mail
         { wch: 20 },  // Departamento
         { wch: 20 },  // Data Retirada
@@ -534,12 +536,20 @@ export default function HistoricoPage() {
         .from('reservas')
         .select(`
           *,
-          veiculos:veiculo_id (id, modelo, placa)
+          veiculos:veiculo_id (id, modelo, placa),
+          usuarios!fk_usuario(id, nome)
         `)
         .order('data_retirada', { ascending: false });
 
       if (error) throw error;
-      setReservas(data || []);
+      
+      // Adiciona o nome do usuário a cada reserva
+      const reservasComUsuario = data.map(reserva => ({
+        ...reserva,
+        nomeUsuario: reserva.usuarios?.nome || 'Usuário não encontrado'
+      }));
+      
+      setReservas(reservasComUsuario || []);
     } catch (error) {
       console.error('Erro ao buscar reservas:', error);
       setError('Erro ao carregar o histórico de reservas.');
@@ -688,21 +698,47 @@ export default function HistoricoPage() {
     });
   };
 
-  const handleDeleteClick = (reserva) => {
+  const handleDeleteClick = async (reserva) => {
+    console.log('Iniciando exclusão da reserva:', reserva.id);
+    console.log('Usuário logado:', user);
+    console.log('É admin?', isAdmin);
+    
     if (!isAdmin) {
-      setError('Apenas administradores podem excluir reservas.');
+      const errorMsg = 'Apenas administradores podem excluir reservas.';
+      console.error(errorMsg);
+      setError(errorMsg);
       return;
     }
-    // Adiciona o email do usuário logado ao objeto da reserva para verificação
-    const reservaComEmail = {
-      ...reserva,
-      email: user?.email || ''
-    };
-    setReservaParaExcluir(reservaComEmail);
-    setSenha('');
-    setError('');
-    setSuccess('');
-    setShowModal(true);
+    
+    try {
+      // Verifica se o usuário é realmente admin
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('perfil')
+        .eq('email', user?.email || '')
+        .single();
+        
+      console.log('Dados do usuário do banco:', { userData, userError });
+      
+      if (userError) throw userError;
+      
+      if (userData?.perfil !== 'admin') {
+        const errorMsg = 'Acesso negado. Você não tem permissão para excluir reservas.';
+        console.error(errorMsg);
+        setError(errorMsg);
+        return;
+      }
+      
+      setReservaParaExcluir(reserva);
+      setSenha('');
+      setError('');
+      setSuccess('');
+      setShowModal(true);
+      
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+      setError('Erro ao verificar permissões. Tente novamente.');
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -711,45 +747,103 @@ export default function HistoricoPage() {
       return;
     }
 
-    if (!senha) {
-      setError('Por favor, insira sua senha de administrador.');
-      return;
-    }
-
     try {
-      // Obtém o usuário atual para verificar se é admin
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!currentUser) {
-        setError('Usuário não autenticado. Por favor, faça login novamente.');
-        return;
+      console.log('Iniciando exclusão da reserva ID:', reservaParaExcluir.id);
+      
+      // Verifica se a reserva existe antes de tentar excluir
+      console.log('Verificando existência da reserva...');
+      const { data: reservaExistente, error: checkError } = await supabase
+        .from('reservas')
+        .select('id')
+        .eq('id', reservaParaExcluir.id)
+        .single();
+      
+      if (checkError) {
+        console.error('Erro ao verificar reserva:', checkError);
+        throw new Error('Erro ao verificar a reserva. Tente novamente.');
       }
-
-      // Verifica a senha do usuário
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: currentUser.email,
-        password: senha
-      });
-
-      if (signInError) throw signInError;
-
-      // Se chegou até aqui, a senha está correta, então pode excluir
-      const { error: deleteError } = await supabase
+      
+      if (!reservaExistente) {
+        throw new Error('Reserva não encontrada. Ela pode já ter sido excluída.');
+      }
+      
+      console.log('Reserva encontrada, verificando restrições...');
+      
+      // Verifica se há restrições de chave estrangeira
+      console.log('Verificando restrições de chave estrangeira...');
+      const { data: constraints, error: constraintsError } = await supabase
+        .rpc('get_foreign_key_constraints', { table_name: 'reservas' });
+      
+      if (constraintsError) {
+        console.warn('Não foi possível verificar restrições de chave estrangeira:', constraintsError);
+      } else if (constraints && constraints.length > 0) {
+        console.log('Restrições de chave estrangeira encontradas:', constraints);
+        // Verifica se há registros dependentes
+        for (const constraint of constraints) {
+          const { data: dependentData, error: dependentError } = await supabase
+            .from(constraint.foreign_table_name)
+            .select('*')
+            .eq(constraint.foreign_column_name, reservaParaExcluir.id)
+            .limit(1);
+            
+          if (dependentError) {
+            console.error(`Erro ao verificar tabela ${constraint.foreign_table_name}:`, dependentError);
+          } else if (dependentData && dependentData.length > 0) {
+            throw new Error(`Não é possível excluir esta reserva pois existem registros relacionados na tabela ${constraint.foreign_table_name}.`);
+          }
+        }
+      }
+      
+      console.log('Nenhuma restrição de chave estrangeira encontrada, prosseguindo com a exclusão...');
+      
+      // Tenta excluir a reserva
+      console.log('Enviando requisição de exclusão...');
+      const { data, error } = await supabase
         .from('reservas')
         .delete()
-        .eq('id', reservaParaExcluir.id);
+        .eq('id', reservaParaExcluir.id)
+        .select();
 
-      if (deleteError) throw deleteError;
+      console.log('Resposta da exclusão:', { data, error });
+      
+      if (error) {
+        console.error('Erro na resposta da exclusão:', error);
+        throw error;
+      }
+      
+      console.log('Reserva excluída com sucesso!');
 
       // Atualiza a lista de reservas
       await fetchReservas();
       setShowModal(false);
+      
+      // Mostra mensagem de sucesso
       setSuccess('Reserva excluída com sucesso!');
       setTimeout(() => setSuccess(''), 3000);
+      
     } catch (error) {
-      console.error('Erro ao excluir reserva:', error);
-      setError(error.message || 'Erro ao excluir reserva. Tente novamente.');
+      console.error('Erro ao excluir reserva:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        error: error
+      });
+      
+      // Mensagens de erro mais amigáveis
+      let errorMessage = 'Erro ao excluir reserva. ';
+      
+      if (error.code === '23503') {
+        errorMessage += 'Não é possível excluir esta reserva pois existem registros relacionados a ela.';
+      } else if (error.code === '42P01') {
+        errorMessage += 'Tabela não encontrada. Verifique a conexão com o banco de dados.';
+      } else if (error.message.includes('permission denied')) {
+        errorMessage += 'Permissão negada. Verifique suas credenciais de administrador.';
+      } else {
+        errorMessage += error.message || 'Tente novamente mais tarde.';
+      }
+      
+      setError(errorMessage);
     }
   };
 
@@ -1021,6 +1115,7 @@ export default function HistoricoPage() {
                 <tr>
                   <th>Veículo</th>
                   <th>Responsável</th>
+                  <th>Usuário Solicitante</th>
                   <th>Departamento</th>
                   <th>Retirada</th>
                   <th>Devolução</th>
@@ -1062,10 +1157,10 @@ export default function HistoricoPage() {
                         )}
                       </td>
                       <td data-label="Responsável">
-                        <div>{reserva.responsavel}</div>
-                        <div style={{ fontSize: '0.85rem', color: colors.textSecondary }}>
-                          {reserva.email}
-                        </div>
+                        {reserva.responsavel}
+                      </td>
+                      <td data-label="Usuário Solicitante">
+                        {reserva.nomeUsuario}
                       </td>
                       <td data-label="Departamento">
                         {reserva.departamento}
@@ -1187,20 +1282,24 @@ export default function HistoricoPage() {
           <ModalContent>
             <ModalTitle>Confirmar Exclusão</ModalTitle>
             
-            <p>Tem certeza que deseja excluir esta reserva? Esta ação não pode ser desfeita.</p>
+            <p>Tem certeza que deseja excluir a reserva do veículo <strong>{reservaParaExcluir?.veiculos?.modelo || 'N/A'}</strong>?</p>
+            <p style={{ color: colors.danger, margin: '10px 0' }}>
+              <FaExclamationTriangle style={{ marginRight: '8px' }} />
+              Esta ação não pode ser desfeita.
+            </p>
             
-            <div style={{ margin: '20px 0' }}>
-              <FilterLabel>Confirmação de Administrador</FilterLabel>
-              <p style={{ fontSize: '0.9rem', color: colors.textSecondary, marginBottom: '10px' }}>
-                <FaUserShield style={{ marginRight: '8px' }} />
-                Esta ação requer privilégios de administrador. Por favor, confirme sua senha para continuar.
+            <div style={{ margin: '20px 0', padding: '15px', backgroundColor: colors.gray100, borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                <FaUserShield style={{ color: colors.primary, marginRight: '10px', fontSize: '1.2rem' }} />
+                <strong>Confirmação de Administrador</strong>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: colors.textSecondary, margin: '5px 0' }}>
+                Usuário: <strong>{user?.email || 'N/A'}</strong>
               </p>
-              <FilterInput 
-                type="password" 
-                value={senha} 
-                onChange={(e) => setSenha(e.target.value)} 
-                placeholder="Digite sua senha de administrador"
-              />
+              <p style={{ fontSize: '0.9rem', color: colors.textSecondary, margin: '5px 0' }}>
+                Perfil: <strong>Administrador</strong>
+              </p>
+              
               {error && (
                 <ErrorMessage style={{ marginTop: '10px' }}>
                   <FaTimesCircle />
