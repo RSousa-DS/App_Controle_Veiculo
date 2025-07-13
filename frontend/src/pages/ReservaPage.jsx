@@ -331,7 +331,8 @@ export default function ReservaPage() {
   const [stats, setStats] = useState({
     total: 0,
     finalizadas: 0,
-    emAndamento: 0
+    emAndamento: 0,
+    atrasadas: 0
   });
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -382,6 +383,7 @@ export default function ReservaPage() {
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
+      const now = new Date().toISOString();
       
       // Buscar total de reservas
       const { count: totalReservas } = await supabase
@@ -392,18 +394,27 @@ export default function ReservaPage() {
       const { count: finalizadas } = await supabase
         .from('reservas')
         .select('*', { count: 'exact', head: true })
-        .eq('status_devolucao', 'Finalizada');
+        .eq('status_devolucao', 'Concluído');
       
-      // Buscar reservas em andamento
+      // Buscar reservas em andamento (não finalizadas e não atrasadas)
       const { count: emAndamento } = await supabase
         .from('reservas')
         .select('*', { count: 'exact', head: true })
-        .eq('status_devolucao', 'Pendente');
+        .eq('status_devolucao', 'Pendente')
+        .gt('data_devolucao_prevista', now);
+      
+      // Buscar reservas atrasadas (data de devolução prevista menor que agora e status Pendente)
+      const { count: atrasadas } = await supabase
+        .from('reservas')
+        .select('*', { count: 'exact', head: true })
+        .eq('status_devolucao', 'Pendente')
+        .lt('data_devolucao_prevista', now);
       
       setStats({
         total: totalReservas || 0,
         finalizadas: finalizadas || 0,
-        emAndamento: emAndamento || 0
+        emAndamento: emAndamento || 0,
+        atrasadas: atrasadas || 0
       });
     } catch (error) {
       console.error('Erro ao buscar estatísticas de reservas:', error);
@@ -488,6 +499,16 @@ export default function ReservaPage() {
             <StatContent>
               <StatLabel>Reservas em Andamento</StatLabel>
               <StatNumber>{loadingStats ? '-' : stats.emAndamento.toLocaleString()}</StatNumber>
+            </StatContent>
+          </StatCard>
+          
+          <StatCard>
+            <StatIcon bgColor="rgba(220, 53, 69, 0.1)" color="#dc3545">
+              <FaClock />
+            </StatIcon>
+            <StatContent>
+              <StatLabel>Reservas Atrasadas</StatLabel>
+              <StatNumber>{loadingStats ? '-' : stats.atrasadas.toLocaleString()}</StatNumber>
             </StatContent>
           </StatCard>
         </StatsContainer>
