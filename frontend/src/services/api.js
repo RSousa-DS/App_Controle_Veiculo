@@ -22,6 +22,12 @@ export const signInWithEmail = async (email, senha) => {
     .single();
 
   if (error) throw error;
+  
+  // Verifica se o usuário está ativo
+  if (data.status !== 'ativo') {
+    throw new Error('Este usuário está inativo. Entre em contato com o administrador.');
+  }
+  
   return data;
 };
 

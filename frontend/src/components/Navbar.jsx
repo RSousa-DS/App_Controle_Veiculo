@@ -438,23 +438,23 @@ const Navbar = () => {
             </NavLink>
           </li>
           
-          <li className={`dropdown ${openDropdown === 'cadastros' ? 'open' : ''}`}>
-            <div 
-              className="dropdown-toggle"
-              onClick={() => toggleDropdown('cadastros')}
-            >
-              <FaCarAlt /> Cadastros
-            </div>
-            <div className="dropdown-menu">
-              <NavLink 
-                to="/veiculos" 
-                className={({ isActive }) => isActive ? 'active' : ''}
-                onClick={toggleMobileMenu}
+          {user.isAdmin && (
+            <li className={`dropdown ${openDropdown === 'cadastros' ? 'open' : ''}`}>
+              <div 
+                className="dropdown-toggle"
+                onClick={() => toggleDropdown('cadastros')}
               >
-                <FaCarAlt /> Veículos
-              </NavLink>
-              
-              {user.isAdmin && (
+                <FaCarAlt /> Cadastros
+              </div>
+              <div className="dropdown-menu">
+                <NavLink 
+                  to="/veiculos" 
+                  className={({ isActive }) => isActive ? 'active' : ''}
+                  onClick={toggleMobileMenu}
+                >
+                  <FaCarAlt /> Veículos
+                </NavLink>
+                
                 <NavLink 
                   to="/usuarios" 
                   className={({ isActive }) => isActive ? 'active' : ''}
@@ -462,9 +462,9 @@ const Navbar = () => {
                 >
                   <FaUsers /> Usuários
                 </NavLink>
-              )}
-            </div>
-          </li>
+              </div>
+            </li>
+          )}
           
           <li className="user-menu">
             <div className="user-info">

@@ -191,7 +191,7 @@ const LoginPage = () => {
       if (success) {
         navigate('/');
       } else {
-        setError('Credenciais inválidas. Tente novamente.');
+        setError('Credenciais inválidas/Usuario inativo.');
       }
     } catch (error) {
       console.error('Erro no login:', error);
