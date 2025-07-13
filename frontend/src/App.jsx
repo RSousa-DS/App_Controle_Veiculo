@@ -7,6 +7,7 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import { ThemeProvider as StyledThemeProvider } from 'styled-components';
 import ReservaPage from './pages/ReservaPage';
 import DevolucaoPage from './pages/DevolucaoPage';
 import HistoricoPage from './pages/HistoricoPage';
@@ -17,6 +18,7 @@ import PrivateRoute from './components/PrivateRoute';
 import LoginPage from './pages/LoginPage';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
+import { GlobalStyles } from './styles/GlobalStyles';
 
 const theme = createTheme();
 
@@ -24,10 +26,13 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/*" element={<AppLayout />} />
-        </Routes>
+        <StyledThemeProvider theme={{}}>
+          <GlobalStyles />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/*" element={<AppLayout />} />
+          </Routes>
+        </StyledThemeProvider>
       </AuthProvider>
     </Router>
   );

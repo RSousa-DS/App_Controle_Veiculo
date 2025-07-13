@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReservaForm from '../components/ReservaForm';
 import styled, { keyframes } from 'styled-components';
 import { supabase } from '../supabaseClient';
-import { FaCar, FaUser, FaCalendarAlt, FaBuilding, FaInfoCircle, FaCheckCircle, FaClock, FaFileExport } from 'react-icons/fa';
+import { FaCar, FaUser, FaCalendarAlt, FaBuilding, FaInfoCircle, FaCheckCircle, FaClock, FaFileExport, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
 // Cores baseadas no layout do menu
@@ -336,6 +336,7 @@ export default function ReservaPage() {
   });
   const [loading, setLoading] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [showReservas, setShowReservas] = useState(true);
 
   const fetchReservas = async () => {
     try {
@@ -516,12 +517,53 @@ export default function ReservaPage() {
 
       <Section>
         <SectionHeader>
-          <FaCar />
-          <span>Reservas Ativas</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <FaCar />
+              <span>Reservas Ativas</span>
+            </div>
+            <button 
+              onClick={() => setShowReservas(!showReservas)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#1a73e8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                transition: 'all 0.2s',
+                ':hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)'
+                }
+              }}
+            >
+              {showReservas ? (
+                <>
+                  <span>Ocultar</span>
+                  <FaChevronUp size={14} />
+                </>
+              ) : (
+                <>
+                  <span>Mostrar</span>
+                  <FaChevronDown size={14} />
+                </>
+              )}
+            </button>
+          </div>
         </SectionHeader>
         
-        <div style={{ overflowX: 'auto' }}>
-          <StyledTable>
+        <div style={{ 
+          overflowX: 'auto',
+          maxHeight: showReservas ? '1000px' : '0',
+          opacity: showReservas ? '1' : '0',
+          transition: 'all 0.3s ease-in-out',
+          overflow: 'hidden'
+        }}>
+          <StyledTable style={{ marginTop: showReservas ? '15px' : '0' }}>
             <thead>
               <tr>
                 <th>Veículo</th>
@@ -561,6 +603,19 @@ export default function ReservaPage() {
             </tbody>
           </StyledTable>
         </div>
+        {!showReservas && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '20px',
+            color: '#666',
+            fontStyle: 'italic',
+            backgroundColor: '#f9f9f9',
+            borderRadius: '4px',
+            marginTop: '10px'
+          }}>
+            As reservas estão ocultas. Clique em "Mostrar" para visualizar.
+          </div>
+        )}
       </Section>
     </Container>
   );

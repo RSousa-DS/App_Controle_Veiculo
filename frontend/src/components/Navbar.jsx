@@ -1,446 +1,373 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import styled from 'styled-components';
 import { 
-  FaCar, FaCalendarAlt, FaHistory, FaUserCog, 
-  FaSignOutAlt, FaBars, FaTimes, FaUserCircle, FaUser,
-  FaPlus, FaCog, FaChevronDown, FaCarAlt
+  FaCar, FaExchangeAlt, FaHistory, FaUsers,
+  FaSignOutAlt, FaBars, FaTimes, FaUserCircle, 
+  FaCarAlt, FaHome
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const NavbarContainer = styled.nav`
   background: #1a73e8;
-  
-  .dropdown-menu {
-    position: relative;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    border-color:#1a73e8;
-    background-color:#1a73e8;
-
-    
-    .dropdown-toggle {
-      background: none;
-      border: none;
-      color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.95rem;
-      transition: all 0.2s;
-      height: 100%;
-      white-space: nowrap;
-      text-decoration: none;
-      font-family: inherit;
-      margin: 0;
-      line-height: 1.5;
-      border-color:#1a73e8;
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.15);
-      }
-      
-      svg {
-        transition: transform 0.2s;
-      }
-      
-      &[aria-expanded="true"] {
-        background: rgba(255, 255, 255, 0.15);
-        svg:last-child {
-          transform: rotate(180deg);
-        }
-      }
-    }
-    
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background: white;
-      min-width: 200px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-      border-radius: 4px;
-      z-index: 1000;
-      overflow: hidden;
-      top: 100%;
-      left: 0;
-      margin-top: 5px;
-      border: 1px solid rgba(0,0,0,0.1);
-      
-      a {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 15px;
-        color: #333;
-        text-decoration: none;
-        transition: all 0.2s;
-        
-        &:hover {
-          background: #f8f9fa;
-          color: #1a73e8;
-        }
-        
-        &.active {
-          background: #e8f0fe;
-          color: #1a73e8;
-          font-weight: 500;
-        }
-        
-        svg {
-          width: 16px;
-          height: 16px;
-        }
-      }
-    }
-    
-    &:hover .dropdown-content {
-      display: block;
-    }
-    
-    @media (max-width: 768px) {
-      width: 100%;
-      
-      .dropdown-toggle {
-        width: 100%;
-        justify-content: space-between;
-      }
-      
-      .dropdown-content {
-        position: static;
-        box-shadow: none;
-        background: rgba(0,0,0,0.05);
-        margin-top: 10px;
-        display: ${({ $isOpen }) => ($isOpen ? 'block' : 'none')};
-      }
-    }
-  }
   color: white;
-  padding: 0 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
-`;
-
-const NavContent = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 60px;
-`;
-
-const Logo = styled(Link)`
-  color: white;
-  text-decoration: none;
-  font-size: 1.5rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   
-  &:hover {
-    color: #e1f5fe;
-  }
-`;
-
-const NavLinks = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  
-  @media (max-width: 768px) {
-    display: ${({ $isOpen }) => ($isOpen ? 'flex' : 'none')};
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
-    background: #1a73e8;
-    flex-direction: column;
-    padding: 20px;
-    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-    z-index: 999;
-  }
-`;
-
-const NavLink = styled(Link)`
-  color: white;
-  text-decoration: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  height: 100%;
-  box-sizing: border-box;
-  cursor: pointer;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  &.active {
-    background: rgba(255, 255, 255, 0.2);
-    font-weight: 500;
-  }
-  
-  &.dropdown-toggle {
+  .navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    height: 100%;
-    padding: 8px 12px;
+    height: 60px;
+    position: relative;
+    
+    @media (max-width: 768px) {
+      padding: 0 15px;
+      height: 56px;
+    }
+  }
+  
+  .menu-toggle {
+    display: none;
+    background: none;
+    border: none;
     color: white;
-    text-decoration: none;
-    border-radius: 4px;
-    transition: all 0.2s;
+    font-size: 24px;
     cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    
+    @media (max-width: 768px) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     
     &:hover {
       background: rgba(255, 255, 255, 0.1);
     }
-    
-    &.active {
-      background: rgba(255, 255, 255, 0.2);
-      font-weight: 500;
-    }
-    
-    svg:last-child {
-      margin-left: 4px;
-    }
   }
   
-  .dropdown-menu & {
-    padding: 10px 15px;
-    color: #333;
-    
-    &:hover {
-      background: #f5f5f5;
-    }
-    
-    &.active {
-      background: #e8f0fe;
-      color: #1a73e8;
-    }
-  }
-`;
-
-const UserMenu = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 20px;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #0d47a1;
+  .nav-logo {
     display: flex;
     align-items: center;
-    justify-content: center;
-  }
-  
-  .user-name {
-    font-size: 0.9rem;
-    font-weight: 500;
-    @media (max-width: 768px) {
-      display: none;
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    
+    svg {
+      margin-right: 10px;
+      font-size: 1.3rem;
+    }
+    
+    .logo-text {
+      @media (max-width: 400px) {
+        display: none;
+      }
     }
   }
   
-  .dropdown {
-    position: absolute;
-    top: 45px;
-    right: 0;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    min-width: 200px;
-    overflow: hidden;
-    display: ${({ $isOpen }) => ($isOpen ? 'block' : 'none')};
-    z-index: 1000;
+  .nav-menu {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
     
-    .dropdown-item {
-      padding: 12px 15px;
-      color: #333;
+    @media (max-width: 768px) {
+      position: fixed;
+      top: 56px;
+      left: -100%;
+      width: 80%;
+      max-width: 280px;
+      height: calc(100vh - 56px);
+      flex-direction: column;
+      align-items: stretch;
+      background: white;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      transition: left 0.3s ease;
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 20px 0;
+      
+      &.open {
+        left: 0;
+      }
+    }
+    
+    li {
+      margin: 0;
+      padding: 0;
+      
+      @media (max-width: 768px) {
+        width: 100%;
+      }
+    }
+    
+    a {
+      color: white;
       text-decoration: none;
+      padding: 10px 15px;
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 0.9rem;
-      transition: all 0.2s;
+      transition: background-color 0.2s;
+      border-radius: 4px;
+      margin: 0 5px;
       
-      &:hover {
-        background: #f5f5f5;
+      @media (max-width: 768px) {
+        color: #333;
+        padding: 12px 20px;
+        margin: 0;
+        border-radius: 0;
+        
+        &:hover {
+          background-color: #f5f5f5;
+        }
       }
       
-      &.danger {
-        color: #e74c3c;
+      svg {
+        margin-right: 8px;
+        font-size: 1.1em;
+      }
+      
+      &.active {
+        background-color: rgba(255, 255, 255, 0.2);
+        font-weight: 500;
+        
+        @media (max-width: 768px) {
+          background-color: #e8f0fe;
+          color: #1a73e8;
+        }
+      }
+    }
+  }
+  
+  .user-menu {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+    
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      padding: 15px 20px;
+      border-top: 1px solid #eee;
+      margin-top: 10px;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      margin-right: 15px;
+      
+      @media (max-width: 768px) {
+        margin-bottom: 15px;
+        width: 100%;
+      }
+      
+      .user-avatar {
+        font-size: 2rem;
+        margin-right: 10px;
+        color: white;
+        
+        @media (max-width: 768px) {
+          color: #555;
+        }
+      }
+      
+      .user-details {
+        display: flex;
+        flex-direction: column;
+        
+        .user-name {
+          font-weight: 500;
+          color: white;
+          
+          @media (max-width: 768px) {
+            color: #333;
+          }
+        }
+        
+        .user-role {
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.8);
+          
+          @media (max-width: 768px) {
+            color: #666;
+          }
+        }
       }
     }
     
-    .divider {
-      height: 1px;
-      background: #eee;
-      margin: 5px 0;
+    .sign-out-btn {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+      
+      @media (max-width: 768px) {
+        width: 100%;
+        justify-content: center;
+        background-color: #f8f9fa;
+        color: #dc3545;
+        border-color: #f8d7da;
+        padding: 10px;
+      }
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        
+        @media (max-width: 768px) {
+          background-color: #f1f1f1;
+        }
+      }
+      
+      svg {
+        margin-right: 6px;
+      }
     }
-  }
-`;
-
-const MobileMenuButton = styled.button`
-  background: none;
-  border: none;
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
-  display: none;
-  
-  @media (max-width: 768px) {
-    display: block;
   }
 `;
 
 const Navbar = () => {
-  const { user, isAdmin, signOut } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const userMenuRef = useRef(null);
-  const mobileMenuRef = useRef(null);
-
-  // Fechar menus ao clicar fora
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  
+  // Fechar menu ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setIsUserMenuOpen(false);
-      }
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
-        setIsMenuOpen(false);
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
       }
     };
-
+    
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const handleSignOut = () => {
-    signOut();
-    toast.success('Você saiu com sucesso!');
-  };
-
-  // Fechar menu mobile ao mudar de rota
+  
+  // Fechar menu ao mudar de rota
   useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location.pathname]);
+    setIsMobileMenuOpen(false);
+  }, [location]);
+  
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+  
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success('Você saiu com sucesso!');
+      navigate('/login');
+    } catch (error) {
+      toast.error('Erro ao sair. Tente novamente.');
+    }
+  };
 
   if (!user) return null;
 
   return (
     <NavbarContainer>
-      <NavContent>
-        <Logo to="/">
-          <FaCar /> Controle de Veículos
-        </Logo>
+      <div className="navbar-container">
+        <button 
+          className="menu-toggle" 
+          onClick={toggleMobileMenu}
+          aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+        >
+          {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
+        </button>
         
-        <MobileMenuButton onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <FaTimes /> : <FaBars />}
-        </MobileMenuButton>
+        <Link to="/" className="nav-logo">
+          <FaCar />
+          <span className="logo-text">Controle de Veículos</span>
+        </Link>
         
-        <NavLinks $isOpen={isMenuOpen} ref={mobileMenuRef}>
-          <NavLink 
-            to="/" 
-            className={location.pathname === '/' ? 'active' : ''}
-          >
-            <FaCalendarAlt /> Reservas
-          </NavLink>
+        <ul className={`nav-menu ${isMobileMenuOpen ? 'open' : ''}`} ref={menuRef}>
+          <li>
+            <NavLink 
+              to="/" 
+              className={({ isActive }) => isActive ? 'active' : ''}
+              onClick={toggleMobileMenu}
+            >
+              <FaHome /> Início
+            </NavLink>
+          </li>
           
-          <NavLink 
-            to="/devolucao" 
-            className={location.pathname === '/devolucao' ? 'active' : ''}
-          >
-            <FaCar /> Devoluções
-          </NavLink>
+          <li>
+            <NavLink 
+              to="/devolucao" 
+              className={({ isActive }) => isActive ? 'active' : ''}
+              onClick={toggleMobileMenu}
+            >
+              <FaExchangeAlt /> Devolução
+            </NavLink>
+          </li>
           
-          <NavLink 
-            to="/historico" 
-            className={location.pathname === '/historico' ? 'active' : ''}
-          >
-            <FaHistory /> Histórico
-          </NavLink>
+          <li>
+            <NavLink 
+              to="/historico" 
+              className={({ isActive }) => isActive ? 'active' : ''}
+              onClick={toggleMobileMenu}
+            >
+              <FaHistory /> Histórico
+            </NavLink>
+          </li>
           
-          {isAdmin && (
-            <div className="dropdown-menu" style={{ height: '100%' }}>
+          <li>
+            <NavLink 
+              to="/veiculos" 
+              className={({ isActive }) => isActive ? 'active' : ''}
+              onClick={toggleMobileMenu}
+            >
+              <FaCarAlt /> Veículos
+            </NavLink>
+          </li>
+          
+          {user.isAdmin && (
+            <li>
               <NavLink 
-                as="div"
-                to="#" 
-                className={`dropdown-toggle ${location.pathname === '/veiculos' || location.pathname.startsWith('/usuarios') ? 'active' : ''}`}
-                onClick={(e) => e.preventDefault()}
+                to="/usuarios" 
+                className={({ isActive }) => isActive ? 'active' : ''}
+                onClick={toggleMobileMenu}
               >
-                <FaCog /> Cadastros <FaChevronDown size={12} />
+                <FaUsers /> Usuários
               </NavLink>
-              <div className="dropdown-content">
-                <Link 
-                  to="/veiculos" 
-                  className={location.pathname === '/veiculos' ? 'active' : ''}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <FaCarAlt /> Veículos
-                </Link>
-                <Link 
-                  to="/usuarios" 
-                  className={location.pathname.startsWith('/usuarios') ? 'active' : ''}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <FaUserCog /> Usuários
-                </Link>
+            </li>
+          )}
+          
+          <li className="user-menu">
+            <div className="user-info">
+              <FaUserCircle className="user-avatar" />
+              <div className="user-details">
+                <div className="user-name">{user.nome || user.email.split('@')[0]}</div>
+                <div className="user-role">{user.isAdmin ? 'Administrador' : 'Usuário'}</div>
               </div>
             </div>
-          )}
-        </NavLinks>
-        
-        <UserMenu 
-          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-          $isOpen={isUserMenuOpen}
-          ref={userMenuRef}
-        >
-          <div className="user-avatar">
-            <FaUserCircle size={20} />
-          </div>
-          <div className="user-name">
-            {user.nome || user.email.split('@')[0]}
-          </div>
-          
-          <div className="dropdown">
-            <div className="dropdown-item" onClick={() => navigate('/perfil')}>
-              <FaUser /> Meu Perfil
-            </div>
-            <div className="divider"></div>
-            <div className="dropdown-item danger" onClick={handleSignOut}>
+            <button className="sign-out-btn" onClick={handleSignOut}>
               <FaSignOutAlt /> Sair
-            </div>
-          </div>
-        </UserMenu>
-      </NavContent>
+            </button>
+          </li>
+        </ul>
+      </div>
     </NavbarContainer>
   );
 };
