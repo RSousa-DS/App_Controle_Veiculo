@@ -62,8 +62,11 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Adiciona a propriedade isAdmin ao objeto user para compatibilidade com o código existente
+  const userWithAdmin = user ? { ...user, isAdmin: user.perfil === 'admin' } : null;
+
   const value = {
-    user,
+    user: userWithAdmin,
     loading,
     isAuthenticated: !!user,
     isAdmin: user?.perfil === 'admin',

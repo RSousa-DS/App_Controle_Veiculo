@@ -1115,7 +1115,7 @@ export default function HistoricoPage() {
                 <tr>
                   <th>Veículo</th>
                   <th>Responsável</th>
-                  <th>Usuário Solicitante</th>
+                  <th>Usuário</th>
                   <th>Departamento</th>
                   <th>Retirada</th>
                   <th>Devolução</th>
@@ -1169,7 +1169,7 @@ export default function HistoricoPage() {
                         {formatarData(reserva.data_retirada)}
                       </td>
                       <td data-label="Devolução">
-                        <div>{formatarData(reserva.data_devolucao_prevista)}</div>
+                        <div>{formatarData(reserva.data_devolucao_real)}</div>
                         {reserva.data_devolucao && (
                           <div style={{ fontSize: '0.85rem', color: colors.textSecondary }}>
                             Devolvido: {formatarData(reserva.data_devolucao)}

@@ -81,6 +81,68 @@ const NavbarContainer = styled.nav`
     margin: 0;
     padding: 0;
     
+    .dropdown {
+      position: relative;
+      
+      .dropdown-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 15px;
+        color: white;
+        text-decoration: none;
+        cursor: pointer;
+        
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        svg {
+          font-size: 1.1em;
+        }
+      }
+      
+      .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: white;
+        min-width: 200px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        z-index: 1000;
+        display: none;
+        
+        a {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 15px;
+          color: #333;
+          text-decoration: none;
+          
+          &:hover {
+            background-color: #f5f5f5;
+          }
+          
+          &.active {
+            background-color: #e9ecef;
+            font-weight: 500;
+          }
+          
+          svg {
+            font-size: 1em;
+            color: #666;
+          }
+        }
+      }
+      
+      &:hover .dropdown-menu {
+        display: block;
+      }
+    }
+    
     @media (max-width: 768px) {
       position: fixed;
       top: 56px;
@@ -96,6 +158,43 @@ const NavbarContainer = styled.nav`
       z-index: 1000;
       overflow-y: auto;
       padding: 20px 0;
+      
+      .dropdown {
+        .dropdown-toggle {
+          color: #333;
+          padding: 12px 20px;
+          
+          &::after {
+            content: '▼';
+            font-size: 0.7em;
+            margin-left: auto;
+          }
+        }
+        
+        .dropdown-menu {
+          position: static;
+          display: none;
+          box-shadow: none;
+          background: #f8f9fa;
+          margin: 0;
+          padding: 0;
+          
+          a {
+            padding-left: 40px;
+            color: #555;
+            
+            &:hover {
+              background-color: #e9ecef;
+            }
+          }
+        }
+        
+        &.open {
+          .dropdown-menu {
+            display: block;
+          }
+        }
+      }
       
       &.open {
         left: 0;
@@ -248,7 +347,14 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const menuRef = useRef(null);
+  
+  const toggleDropdown = (dropdown) => {
+    if (window.innerWidth <= 768) {
+      setOpenDropdown(openDropdown === dropdown ? null : dropdown);
+    }
+  };
   
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -332,27 +438,33 @@ const Navbar = () => {
             </NavLink>
           </li>
           
-          <li>
-            <NavLink 
-              to="/veiculos" 
-              className={({ isActive }) => isActive ? 'active' : ''}
-              onClick={toggleMobileMenu}
+          <li className={`dropdown ${openDropdown === 'cadastros' ? 'open' : ''}`}>
+            <div 
+              className="dropdown-toggle"
+              onClick={() => toggleDropdown('cadastros')}
             >
-              <FaCarAlt /> Veículos
-            </NavLink>
-          </li>
-          
-          {user.isAdmin && (
-            <li>
+              <FaCarAlt /> Cadastros
+            </div>
+            <div className="dropdown-menu">
               <NavLink 
-                to="/usuarios" 
+                to="/veiculos" 
                 className={({ isActive }) => isActive ? 'active' : ''}
                 onClick={toggleMobileMenu}
               >
-                <FaUsers /> Usuários
+                <FaCarAlt /> Veículos
               </NavLink>
-            </li>
-          )}
+              
+              {user.isAdmin && (
+                <NavLink 
+                  to="/usuarios" 
+                  className={({ isActive }) => isActive ? 'active' : ''}
+                  onClick={toggleMobileMenu}
+                >
+                  <FaUsers /> Usuários
+                </NavLink>
+              )}
+            </div>
+          </li>
           
           <li className="user-menu">
             <div className="user-info">
